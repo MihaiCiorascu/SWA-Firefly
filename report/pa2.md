@@ -170,3 +170,18 @@ flowchart LR
 *Table 2.2: Epics.*
 
 At D1, after the first field trials, we check whether squad leaders can log a report quickly with gloves on and under stress. If not, we refine the interface before building P2P mode on top of it. At D2 we check how often squads actually use P2P mode. Passing information through other squads (E4) only pays off if P2P syncs are common, so if they are rare, we drop E4 and move on to E5.
+
+## 2.6 Pricing and Sustainability
+
+The buyers are governments, through their fire services. They budget yearly and buy software as multi-year contracts, so of the pricing models in L05 (slide 23) a yearly subscription per fire service, priced by the number of tablets, fits best. Comparable field tools are sold the same way: Avenza Maps charges per device per year [Avenza], and Esri sells Field Maps as part of per-user licenses [Esri]. The main alternative is the model of TAK, which is developed at government expense and given to responders for free [CivTAK]. That shifts the cost to a single government funder instead of each fire service.
+
+A subscription needs license management on the central server. It must never block a tablet in the field: if a subscription lapses during an incident, tablets keep logging reports and syncing in P2P mode (R1), and the license is only checked when a tablet syncs with the central server.
+
+Each stakeholder gains something. Squads see what neighbouring squads have reported, command staff get a combined picture, and fire services get a cost that fits their yearly budget. The one loss, crews being located through their tablets (R6), is the tension already discussed in Section 1.3.
+
+<!-- Sources (verified by the pricing research, 2026-09-19):
+[Avenza] https://store.avenza.com/pages/pricing (Pro $169.99/device/yr; enterprise volume pricing)
+[Esri] https://www.esri.com/en-us/arcgis/products/arcgis-field-maps/buy (bundled in user-type licenses)
+[CivTAK] https://www.civtak.org/atak-about/ ("developed at government expense")
+Also verified: Technosylva $383k California RFI2 contract, https://statescoop.com/california-wildfire-technology-contracts-fast-procurement/
+Full research: scratchpad pricing_research.md. Tablet Command contract amounts are UNVERIFIED, so don't cite them. -->
