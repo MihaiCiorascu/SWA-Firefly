@@ -53,65 +53,47 @@ secondary source or memory. Check anything below VERIFIED before citing it.
 
 In response to the problem in Section 1.1, the system is a shared incident map that crews keep using without a connection. It serves squad leaders and crew bosses who log observations in the field, division supervisors who need to know what neighbouring crews have seen, and the command staff at the Incident Command Post, who build the incident picture from their reports.
 
-Each device keeps working offline and synchronises with a central server whenever a connection is available. When two squads meet, their leaders can switch on a direct exchange to bring each other up to date. Some information is combined automatically. The rest is settled by the squads on the spot.
+Each device keeps working offline and synchronises with a central server whenever a connection is available, which is also how updates and assignments from the command staff reach the squads. When two squads meet, their leaders can switch on a direct exchange to bring each other up to date. Some information is combined automatically. The rest is settled by the squads on the spot.
 
 The system is meant for small and large incidents alike. It does not replace voice radio, model fire behaviour or direct aircraft. Passing information on through squads that never met its author is a later step (Section 2.5).
 
 ## 2.2 Key Scenarios
 
-We describe the system's function through scenarios written from the user's side, at the level of one person reaching one goal [Cockburn]. Following Rozanski and Woods [R&W, Ch. 10], we separate functional scenarios, which say what a user does and sees, from a system quality scenario, which states how the system must hold up under a change in its environment and sets measurable targets. Table 2.1 lists the scenarios the system must support and the stakeholders from Section 1.3 each one serves. Three are worked out below, because they carry the requirements that shape the architecture (Section 2.3). The others are in Appendix A.
+We describe the system's function through scenarios written from the user's side, at the level of one person reaching one goal [Cockburn]. Table 2.1 lists them with the stakeholders from Section 1.3 they serve. Two functional scenarios and one quality scenario are worked out below.
 
-<!-- Stakeholder names must match Section 1.3. 1.3 currently says "crew and
-division leaders" and "incident commanders and command staff". Pick one set of
-ICS terms and use it in both places. -->
+<!-- Actor and stakeholder names must match Section 1.3. -->
 
 | ID | Actor | Goal | Stakeholders served |
 |---|---|---|---|
-| S1 | Squad leader | Log an observation (spot fire, blocked road, hazard) without a connection | Squads, division supervisors |
-| S2 | Squad leader | Bring the tablet up to date with the central server when coverage returns | Squads, command staff |
+| S1 | Squad leader | Log an observation without a connection | Squads, division supervisors |
+| S2 | Squad leader | Receive updates and assignments once the tablet reaches the central server | Squads, command staff |
 | S3 | Two squad leaders | Exchange updates directly when their squads meet | Squads, division supervisors |
-| S4 | Two squad leaders | Settle a disagreement about the same road, hazard or line | Squads, division supervisors |
-| S5 | Division supervisor | See what neighbouring squads have reported, and how old each report is | Division supervisors |
-| S6 | Command staff | See the combined incident picture and send assignments to the field | Incident commander, planning staff |
-| S7 | Squad member | Correct or withdraw their own wrong entry | Squads |
-| S8 | Fire service | Replay the incident record for debriefing and investigation | Fire service leadership, investigators |
+| S4 | Two squad leaders | Settle conflicting reports about the same thing | Squads |
+| S5 | Division supervisor | See what the squads in their division have reported | Division supervisors |
+| S6 | Command staff | See the combined incident picture and send assignments to squads | Command staff |
+| S7 | Squad leader | Correct or withdraw their own wrong entry | Squads |
 
-*Table 2.1: Scenario overview. S1, S3 and S4 are detailed below, and the quality scenario Q1 follows them.*
+*Table 2.1: Scenario overview.*
 
 ### 2.2.1 Logging an observation without a connection (S1)
 
-At 13:40 Squad 3 is working the Division B flank below a ridge, with no coverage. The squad leader sees a spot fire about 50 metres across the containment line. They call it in over the radio first, as procedure requires. They then mark it on the tablet map with a size estimate and a photo. The spot fire appears on their map straight away, stamped with their name and the time, and marked as not yet shared with anyone. If the tablet shuts down before the next exchange, the entry is still there when it restarts.
+Squad 3 is working below a ridge with no coverage when the squad leader sees a spot fire across the containment line. They call it in over the radio, then mark it on the tablet map. It appears on their map straight away, marked as not yet shared, and is sent at the next exchange, with the central server or with another squad.
 
-*Success guarantee:* the observation is kept on the device with its author, time and place, and is shared at the next exchange, whether with the central server or with another squad.
+### 2.2.2 Two squads meet (S3, S4)
 
-### 2.2.2 Reconciling divergent records when two squads meet (S3, S4)
+Squad 3 and Squad 7 meet during the shift. Neither has had a connection since the morning briefing. Both squad leaders switch on direct exchange, and each tablet shows the other squad. Afterwards, each leader sees a summary of what came in and what went out. Reports that do not conflict now appear on both maps. Where the squads recorded conflicting things about the same item, such as one marking a road as blocked and the other as open, both tablets show the conflict with both reports, and the two leaders settle it on the spot.
 
+*Success guarantee:* both tablets hold the same record, and nothing either squad entered has been lost.
 
-At 15:00 Squad 3 (Division B) and Squad 7 (Division C) meet at a drop point. Neither has had a connection since the morning briefing. Both squad leaders switch on direct exchange, and each tablet shows the other squad by name. After the exchange, each leader sees a short summary of what came in and what went out. Squad 3's spot fire is now on Squad 7's map, and the dozer line Squad 7 built during the afternoon is on Squad 3's map.
+<!-- FIGURE 2.1: timeline of this scenario (two lanes: Squad 3, Squad 7).
+Export the Mermaid source to PNG so it does not count toward the word limit. -->
 
-One item needs attention. At 14:05 Squad 3 marked Road 12 as blocked by a fallen tree. At 14:20 Squad 7, who had not seen that report, marked it as open after a dozer cleared the road from their side. Both tablets now show Road 12 as disputed, with both reports, who made them and when. The two leaders talk it through, agree that the road is open, and mark it so. Both tablets now show Road 12 as open, together with a note that it was disputed and who settled it.
+### 2.2.3 Quality scenario: extended disconnection
 
-*Extensions:*
-- The leaders cannot agree, or they leave before settling. Road 12 stays disputed on both tablets with both reports visible, and reaches the central server at the next sync like any other entry. How disputes are settled away from the meeting is outside the scope of this report.
-- The exchange is cut off halfway. Everything already received is kept, and the rest is exchanged at the next meeting.
-
-*Success guarantee:* both tablets hold the same record, and nothing either squad entered has disappeared without someone seeing it.
-
-<!-- FIGURE 2.1: timeline of this scenario. Two lanes (Squad 3, Squad 7):
-morning briefing (in sync) -> split -> each logs entries and edits Road 12 ->
-meet at drop point -> exchange -> automatically combined items vs Road 12
-disputed -> settled on the spot. Draw it in Mermaid and embed the exported PNG,
-so the diagram source does not count toward the word limit. -->
-
-### 2.2.3 Quality scenario: a squad out of contact for a whole shift (Q1)
-
-<!-- R&W system quality scenario fields. All numbers are PROPOSALS for the team
-to confirm. CA3 experiments should measure them. -->
+<!-- Numbers are proposals for the team to confirm; CA3 experiments measure them. -->
 
 | Field | Content |
 |---|---|
-| Overview | A squad spends a full operational period out of contact while other squads keep recording, then meets another squad. |
-| System state | Both tablets hold the incident record as it was at the morning briefing. |
-| System environment | No connection to the central server for 12 hours. The two tablets are within a few metres of each other for about 5 minutes at the meeting point. |
-| External stimulus | Each squad has logged up to 500 entries, and some of them concern the same roads, hazards or lines. Both leaders switch on direct exchange. |
-| Required response | All entries are exchanged within 60 seconds. No entry is lost, and no entry is replaced without the users seeing it. Every item that cannot be combined automatically is shown as disputed before the squads leave. The same holds for a small incident (5 squads) and a large one (60 squads). |
+| Situation | A squad has been out of contact for a full shift, then meets another squad. |
+| Required response | Both tablets exchange everything they hold. No entry is lost, and conflicting reports are shown to both leaders, never dropped. |
+| Target | 500 entries per tablet are exchanged within 60 seconds. |
