@@ -1,0 +1,18 @@
+flowchart LR
+    subgraph PoC["Proof of concept"]
+        E1["E1 Offline reports and<br/>central server sync"]
+        E2["E2 P2P mode"]
+    end
+    D1{"D1 Can squad leaders<br/>log quickly in the field?"}
+    UI["Refine the interface"]
+    E3["E3 Zones"]
+    D2{"D2 Do squads use<br/>P2P mode often?"}
+    E4["E4 Passing information<br/>through other squads"]
+    E5["E5 Link to regional systems"]
+
+    E1 --> D1
+    D1 -- yes --> E2
+    D1 -- no --> UI --> D1
+    E2 --> E3 --> D2
+    D2 -- yes --> E4 --> E5
+    D2 -- no --> E5
