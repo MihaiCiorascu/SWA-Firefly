@@ -59,7 +59,7 @@ The system is for small and large incidents, and it does not replace voice radio
 
 ## 2.2 Key Scenarios
 
-Table 2.1 lists the scenarios at user-goal level [Cockburn], with the stakeholders from Section 1.3 that each one serves. We detail two of them below, and then one quality scenario.
+Table 2.1 lists the scenarios at user-goal level [Cockburn], with the stakeholders from Section 1.3 that each one serves. We detail two of them below.
 
 <!-- Actor and stakeholder names must match Section 1.3. -->
 
@@ -69,8 +69,6 @@ Table 2.1 lists the scenarios at user-goal level [Cockburn], with the stakeholde
 | S2 | Squad leader | Receive updates and assignments once connected | Squads, command staff |
 | S3 | Two squad leaders | Sync in P2P mode when their squads meet | Squads |
 | S4 | Two squad leaders | Settle conflicting reports about the same thing | Squads |
-| S5 | Division supervisor | Follow reports from a wider area than one squad | Division supervisors |
-| S6 | Command staff | See the combined picture and assign squads | Command staff |
 
 *Table 2.1: Scenario overview.*
 
@@ -85,16 +83,6 @@ Squads 3 and 7 meet during the shift. Neither squad has had a connection since t
 <!-- FIGURE 2.1: timeline of this scenario (two lanes: Squad 3, Squad 7).
 Export the Mermaid source to PNG so it does not count toward the word limit. -->
 
-### 2.2.3 Quality scenario: extended disconnection
-
-<!-- Numbers are proposals for the team to confirm; CA3 experiments measure them. -->
-
-| Field | Content |
-|---|---|
-| Situation | A squad has been out of contact for a full shift, then meets another squad. |
-| Response | Both tablets exchange all their entries. No entry is lost, and both leaders see all conflicts. |
-| Target | The tablets exchange 500 entries each in less than 60 seconds. |
-
 ## 2.3 Architecturally Significant Requirements
 
 A requirement is architecturally significant if it needs dedicated components, is expensive to change, or enables or blocks future functions [L05, slide 21].
@@ -102,11 +90,11 @@ A requirement is architecturally significant if it needs dedicated components, i
 | ID | Requirement | From | Why significant |
 |---|---|---|---|
 | R1 | Without a connection, a tablet can store new reports, update existing reports, and sync with another tablet in P2P mode. | S1, S3 | Each tablet keeps its own copy of the record. It is expensive to add this to an online design later. |
-| R2 | With a connection, a tablet syncs with the central server automatically. It sends its reports and receives the updates and assignments for its zones. | S2, S6 | A component must detect the connection and sync without user action. |
+| R2 | With a connection, a tablet syncs with the central server automatically. It sends its reports and receives the updates and assignments for its zones. | S2 | A component must detect the connection and sync without user action. |
 | R3 | After two peers sync, both hold the same record. The central server counts as a peer. | S2, S3 | All pairs of peers use one sync behaviour. This also makes relaying possible later (E4). |
 | R4 | No entry is lost. The users see conflicting reports, and the system never drops them. | S3, S4 | The stored data must show which changes were concurrent. This is expensive to change after deployment (ADR in Part II). |
 | R5 | Two tablets only sync when both squad leaders have switched on P2P mode. | S3 | Tablets must find and trust each other only on request. This prevents exchange in the background. |
-| R6 | The central server subscribes each tablet to the zones within a radius of its position, or to zones that the server assigns. The radius depends on the user's role. The server sends each tablet only the reports from its zones. Zones do not limit P2P mode. | S2, S5 | A server component must track positions and subscriptions. Traffic stays small, so the system works for small and large incidents. |
+| R6 | The central server subscribes each tablet to the zones within a radius of its position, or to zones that the server assigns. The radius depends on the user's role. The server sends each tablet only the reports from its zones. Zones do not limit P2P mode. | S2 | A server component must track positions and subscriptions. Traffic stays small, so the system works for small and large incidents. |
 <!-- Part II notes, not for PA2:
 - Zones are Uber's H3 hexagons; subscription = all hexagons intersecting a circle of radius x around the tablet (figure available). Name H3 in CA1 or an ADR.
 - ADR candidate: the server pushes updates to tablets over a persistent connection (e.g. WebSockets) instead of tablets long-polling every 30 s, because polling costs too much battery and hardware on the tablets. -->
@@ -143,7 +131,6 @@ The roadmap in Figure 2.2 puts epics in order over one to two years. An epic is 
 | E2 | P2P mode, a sync summary, and a view to settle conflicts | R1, R5 | Squads | P2P syncs per shift |
 | E3 | Reports from the zones around them | R6 | Division supervisors | Data sent per tablet |
 | E4 | Reports that other squads relay from their author | R3 | Squads | Time for a report to reach squads |
-| E5 | Links to regional systems | none | Command staff | To be defined |
 
 *Table 2.2: Epics.*
 
@@ -151,13 +138,12 @@ At D1, field trials check if squad leaders can log reports quickly with gloves o
 
 ## 2.6 Pricing and Sustainability
 
-Governments buy through their fire services, with yearly budgets and multi-year contracts. Of the pricing models in L05 (slide 23), a yearly subscription per fire service, priced per tablet, fits best. Comparable tools use the same model [Avenza], [Esri]. The alternative is the TAK model: the government pays for development, and responders get the software free [CivTAK].
+Governments buy through their fire services, with yearly budgets and multi-year contracts. Of the pricing models in L05 (slide 23), a yearly subscription per fire service, priced per tablet, fits best. Comparable tools use the same model [Avenza], [Esri].
 
 A subscription needs license management on the central server. A lapsed license must never stop a tablet in the field, so the server checks the license only when a tablet syncs with it. Squads get the reports of their neighbours, command staff get a combined picture, and fire services get a predictable cost. The disadvantage for crews is that their tablets show where they are, which Section 1.3 discusses.
 
 <!-- Sources (verified by the pricing research, 2026-09-19):
 [Avenza] https://store.avenza.com/pages/pricing (Pro $169.99/device/yr; enterprise volume pricing)
 [Esri] https://www.esri.com/en-us/arcgis/products/arcgis-field-maps/buy (bundled in user-type licenses)
-[CivTAK] https://www.civtak.org/atak-about/ ("developed at government expense")
 Also verified: Technosylva $383k California RFI2 contract, https://statescoop.com/california-wildfire-technology-contracts-fast-procurement/
 Full research: scratchpad pricing_research.md. Tablet Command contract amounts are UNVERIFIED, so don't cite them. -->
