@@ -131,3 +131,42 @@ Section 1.5 lists the non-functional requirements across all categories. Here we
 **Tradeoff: manual P2P mode against wide spread of data.** Because P2P mode is only switched on when two squad leaders choose to, reports spread between squads only at planned meetings. A report can therefore take longer to reach other squads than it would if tablets exchanged data automatically whenever they came close. We accept this delay in return for lower battery use and for squad leaders keeping control over which tablets they exchange data with.
 
 <!-- CONFIRM: are battery use and control the team's actual reasons for the manual toggle? -->
+
+## 2.5 Delivery Roadmap
+
+We plan delivery as a series of epics, each a set of user stories that together bring clear value [L05, slide 20], over a horizon of one to two years. Each epic delivers both what the squad leader sees and what runs behind it, since neither is useful alone. Figure 2.2 shows the order and the points where we decide whether to continue, and Table 2.2 links each epic to the requirements it delivers and the stakeholders it serves. Following SAFe's advice to show epics rather than release dates [SAFe], the roadmap has no fixed dates.
+
+```mermaid
+flowchart LR
+    subgraph PoC["Proof of concept"]
+        E1["E1 Offline reports and<br/>central server sync"]
+        E2["E2 P2P mode"]
+    end
+    D1{"D1 Can squad leaders<br/>log quickly in the field?"}
+    UI["Refine the interface"]
+    E3["E3 Zones"]
+    D2{"D2 Do squads use<br/>P2P mode often?"}
+    E4["E4 Passing information<br/>through other squads"]
+    E5["E5 Link to regional systems"]
+
+    E1 --> D1
+    D1 -- yes --> E2
+    D1 -- no --> UI --> D1
+    E2 --> E3 --> D2
+    D2 -- yes --> E4 --> E5
+    D2 -- no --> E5
+```
+
+*Figure 2.2: Delivery roadmap. E1 and E2 are built in the proof of concept.*
+
+| Epic | What the squad leader gets | Requirements | Serves | Value measured by |
+|---|---|---|---|---|
+| E1 | A map to log and update reports offline, with a "not yet shared" marker and the age of each report. Reports sync with the central server when a connection appears. | R1, R2, R3, R4 | Squads, command staff | Reports logged offline per shift |
+| E2 | A P2P mode switch, a list of tablets in range, a summary after each sync, and a view for settling conflicts. | R1, R5 | Squads | P2P syncs per shift, conflicts settled on the spot |
+| E3 | Reports from the zones around the tablet, with a wider area for division supervisors. | R6 | Division supervisors, command staff | Data sent per tablet |
+| E4 | Reports from squads they never met, passed on by squads that did. | R3 | Squads | Time for a report to reach squads out of contact |
+| E5 | Incident information shared beyond a single central server. | none | Command staff | To be defined |
+
+*Table 2.2: Epics.*
+
+At D1, after the first field trials, we check whether squad leaders can log a report quickly with gloves on and under stress. If not, we refine the interface before building P2P mode on top of it. At D2 we check how often squads actually use P2P mode. Passing information through other squads (E4) only pays off if P2P syncs are common, so if they are rare, we drop E4 and move on to E5.
