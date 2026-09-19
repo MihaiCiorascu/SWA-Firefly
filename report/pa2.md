@@ -115,3 +115,19 @@ Not every requirement shapes the architecture. We treat a requirement as archite
 - ADR candidate: the server pushes updates to tablets over a persistent connection (e.g. WebSockets) instead of tablets long-polling every 30 s, because polling costs too much battery and hardware on the tablets. -->
 
 The remaining scenarios, such as viewing a division's reports (S5) or correcting an entry (S7), are features of the map and do not constrain the architecture beyond R1 and R2.
+
+## 2.4 Quality Attributes and Tradeoffs
+
+Section 1.5 lists the non-functional requirements across all categories. Here we go deeper into the three qualities that matter most for the scenarios in Section 2.2, and give each a target that the proof of concept can test.
+
+| Quality | What it means | Target | Requirements |
+|---|---|---|---|
+| Offline operation | A squad can store and update reports and sync in P2P mode with no connection. | A full operational period (12 hours) with no connection to the central server. | R1, R5 |
+| No lost reports | Once stored on a tablet, a report survives a crash or an interrupted sync and reaches the central server at the next sync. | Zero reports lost. | R3, R4 |
+| Visible report age | Every report on the map shows who made it and how long ago. | Every report, on every tablet. | R1, R2 |
+
+<!-- The 12-hour target is a proposal for the team to confirm. -->
+
+**Tradeoff: manual P2P mode against wide spread of data.** Because P2P mode is only switched on when two squad leaders choose to, reports spread between squads only at planned meetings. A report can therefore take longer to reach other squads than it would if tablets exchanged data automatically whenever they came close. We accept this delay in return for lower battery use and for squad leaders keeping control over which tablets they exchange data with.
+
+<!-- CONFIRM: are battery use and control the team's actual reasons for the manual toggle? -->
