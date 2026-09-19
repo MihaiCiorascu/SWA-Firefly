@@ -53,7 +53,7 @@ secondary source or memory. Check anything below VERIFIED before citing it.
 
 In response to the problem in Section 1.1, the system is a shared incident map that crews keep using without a connection. It serves squad leaders and crew bosses who log observations in the field, division supervisors who need to know what neighbouring crews have seen, and the command staff at the Incident Command Post, who build the incident picture from their reports.
 
-Each device keeps working offline and synchronises with a central server whenever a connection is available, which is also how updates and assignments from the command staff reach the squads. When two squads meet, their leaders can switch on P2P mode to bring each other up to date. Some information is combined automatically. The rest is settled by the squads on the spot.
+Each device keeps working offline and synchronises with a central server whenever a connection is available, which is also how updates and assignments from the command staff reach the squads. The incident area is divided into zones, and each tablet receives from the central server only the reports from the zones around it. When two squads meet, their leaders can switch on P2P mode to bring each other up to date. Some information is combined automatically. The rest is settled by the squads on the spot.
 
 The system is meant for small and large incidents alike. It does not replace voice radio, model fire behaviour or direct aircraft. Passing information on through squads that never met its author is a later step (Section 2.5).
 
@@ -66,10 +66,10 @@ We describe the system's function through scenarios written from the user's side
 | ID | Actor | Goal | Stakeholders served |
 |---|---|---|---|
 | S1 | Squad leader | Log an observation without a connection | Squads, division supervisors |
-| S2 | Squad leader | Receive updates and assignments once the tablet reaches the central server | Squads, command staff |
+| S2 | Squad leader | Receive updates and assignments for the zones around them once the tablet reaches the central server | Squads, command staff |
 | S3 | Two squad leaders | Sync their tablets in P2P mode when their squads meet | Squads, division supervisors |
 | S4 | Two squad leaders | Settle conflicting reports about the same thing | Squads |
-| S5 | Division supervisor | See what the squads in their division have reported | Division supervisors |
+| S5 | Division supervisor | Follow reports from a wider area than a single squad | Division supervisors |
 | S6 | Command staff | See the combined incident picture and send assignments to squads | Command staff |
 | S7 | Squad leader | Correct or withdraw their own wrong entry | Squads |
 
@@ -100,14 +100,18 @@ Export the Mermaid source to PNG so it does not count toward the word limit. -->
 
 ## 2.3 Architecturally Significant Requirements
 
-Not every requirement shapes the architecture. We treat a requirement as architecturally significant when it needs dedicated components, is costly to change later, or enables or blocks future functionality [L05, slide 21]. Five requirements from Section 2.2 meet at least one of these criteria.
+Not every requirement shapes the architecture. We treat a requirement as architecturally significant when it needs dedicated components, is costly to change later, or enables or blocks future functionality [L05, slide 21]. Six requirements from Section 2.2 meet at least one of these criteria.
 
 | ID | Requirement | Scenarios | Why it is significant |
 |---|---|---|---|
 | R1 | Without a connection, a tablet can store new reports, update existing reports, and sync with another tablet in P2P mode. | S1, S3, S7 | Each tablet must hold its own copy of the incident record. Adding offline support to a system designed to be online means redesigning it, so this has to be decided first. |
-| R2 | With a connection, a tablet syncs with the central server automatically, sending its new and updated reports and receiving the updates and assignments relevant to its squad. | S2, S6 | Unlike P2P mode, this sync needs no user action, so the tablet must notice when a connection appears and sync on its own. |
+| R2 | With a connection, a tablet syncs with the central server automatically, sending its new and updated reports and receiving the updates and assignments for the zones around it. | S2, S6 | Unlike P2P mode, this sync needs no user action, so the tablet must notice when a connection appears and sync on its own. |
 | R3 | After two peers sync, both hold the same record. The central server counts as a peer. | S2, S3, S6 | Every sync, whether between two tablets or between a tablet and the central server, follows the same behaviour, not two separate mechanisms. This also makes the later step of passing information on through other squads possible (Section 2.5). |
 | R4 | No entry is lost, and conflicting reports are shown to the users, never dropped. | S3, S4 | Every copy of the record must be able to tell that two changes were made without knowledge of each other. This is built into how data is stored and exchanged, so it is costly to change once tablets are in the field. How this is done is decided in an ADR in Part II. |
 | R5 | Two tablets only sync when both squad leaders have switched on P2P mode. | S3 | Tablets need a way to find and trust each other only when asked to, which is a dedicated component. It also rules out exchanging data in the background without anyone asking. |
+| R6 | Each tablet reports its position to the central server, which subscribes it to every zone within a radius around that position and sends it only the reports from those zones. The radius depends on the user's role, so a division supervisor follows a wider area than a squad. The server can also subscribe a tablet to specific zones, for example when assigning a squad to an area. Zones limit only what the server sends: two tablets in P2P mode exchange everything they hold. | S2, S5 | This needs a dedicated component on the server that tracks positions, zones and subscriptions. It keeps the data sent to each tablet small on weak connections, which lets the same system serve small and large incidents. Because it decides what every sync with the server contains, it is costly to change later. |
+<!-- Part II notes, not for PA2:
+- Zones are Uber's H3 hexagons; subscription = all hexagons intersecting a circle of radius x around the tablet (figure available). Name H3 in CA1 or an ADR.
+- ADR candidate: the server pushes updates to tablets over a persistent connection (e.g. WebSockets) instead of tablets long-polling every 30 s, because polling costs too much battery and hardware on the tablets. -->
 
 The remaining scenarios, such as viewing a division's reports (S5) or correcting an entry (S7), are features of the map and do not constrain the architecture beyond R1 and R2.
