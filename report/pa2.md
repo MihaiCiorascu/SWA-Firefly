@@ -51,15 +51,15 @@ secondary source or memory. Check anything below VERIFIED before citing it.
 
 ## 2.1 Vision
 
-Building on the problem in Section 1.1, the system is a shared incident map that crews keep using without a connection. It serves squad leaders, division supervisors, and the command staff at the Incident Command Post.
+The system is a shared incident map that crews can use without a connection. It answers the problem in Section 1.1. Its users are squad leaders, division supervisors, and the command staff at the Incident Command Post.
 
-Each tablet works offline and syncs with a central server whenever a connection is available, which is also how assignments reach squads. The server sends each tablet only the reports from the zones around it. When two squads meet, their leaders can switch on P2P mode to sync directly. Some information is merged automatically, and the rest is settled by the squads on the spot.
+Each tablet works offline and syncs with a central server when it has a connection. Assignments reach squads the same way. The server sends each tablet only the reports from the zones around it. When two squads meet, their leaders can switch on P2P mode to sync directly. Some information merges automatically, and the squads settle the rest on the spot.
 
-The system serves small and large incidents alike and does not replace voice radio. Passing information on through squads that never met its author is a later step (Section 2.5).
+The system is for small and large incidents, and it does not replace voice radio. Relaying information through squads that never met its author is a later step (Section 2.5).
 
 ## 2.2 Key Scenarios
 
-Table 2.1 lists the user-goal scenarios [Cockburn] and the stakeholders from Section 1.3 they serve. Two are detailed below, followed by a quality scenario.
+Table 2.1 lists the scenarios at user-goal level [Cockburn], with the stakeholders from Section 1.3 that each one serves. We detail two of them below, and then one quality scenario.
 
 <!-- Actor and stakeholder names must match Section 1.3. -->
 
@@ -76,11 +76,11 @@ Table 2.1 lists the user-goal scenarios [Cockburn] and the stakeholders from Sec
 
 ### 2.2.1 Logging without a connection (S1)
 
-Squad 3's leader, working below a ridge with no coverage, sees a spot fire across the containment line. They call it in over the radio, then mark it on the map, where it appears at once, marked as not yet shared until the next sync.
+The leader of Squad 3 works below a ridge with no coverage and sees a spot fire across the containment line. They report it over the radio and then mark it on the map. The report shows immediately, with a "not yet shared" mark until the next sync.
 
 ### 2.2.2 Two squads meet (S3, S4)
 
-Squads 3 and 7 meet mid-shift, neither having had a connection since the morning briefing. Both leaders switch on P2P mode, and afterwards each sees a summary of what came in and what went out. Reports that do not conflict appear on both maps. Where the squads recorded conflicting things about the same item, such as a road marked blocked by one and open by the other, both tablets show both reports and the leaders settle it on the spot. Nothing either squad entered is lost.
+Squads 3 and 7 meet during the shift. Neither squad has had a connection since the morning briefing. Both leaders switch on P2P mode. After the sync, each leader sees a summary of the reports that came in and went out. Reports that do not conflict show on both maps. Sometimes the squads recorded different things about the same item, for example a road that one squad marked as blocked and the other as open. Then both tablets show both reports, and the leaders settle the conflict on the spot. No report from either squad is lost.
 
 <!-- FIGURE 2.1: timeline of this scenario (two lanes: Squad 3, Squad 7).
 Export the Mermaid source to PNG so it does not count toward the word limit. -->
@@ -92,44 +92,44 @@ Export the Mermaid source to PNG so it does not count toward the word limit. -->
 | Field | Content |
 |---|---|
 | Situation | A squad has been out of contact for a full shift, then meets another squad. |
-| Response | Both tablets exchange everything they hold. No entry is lost, and conflicts are shown to both leaders. |
-| Target | 500 entries per tablet exchanged within 60 seconds. |
+| Response | Both tablets exchange all their entries. No entry is lost, and both leaders see all conflicts. |
+| Target | The tablets exchange 500 entries each in less than 60 seconds. |
 
 ## 2.3 Architecturally Significant Requirements
 
-We call a requirement architecturally significant when it needs dedicated components, is costly to change, or enables or blocks future functionality [L05, slide 21].
+A requirement is architecturally significant if it needs dedicated components, is expensive to change, or enables or blocks future functions [L05, slide 21].
 
 | ID | Requirement | From | Why significant |
 |---|---|---|---|
-| R1 | Without a connection, a tablet can store new reports, update existing reports, and sync with another tablet in P2P mode. | S1, S3 | Every tablet holds its own copy of the record. Adding this to an online design later means a redesign. |
-| R2 | With a connection, a tablet syncs with the central server automatically, sending its reports and receiving the updates and assignments for its zones. | S2, S6 | Needs a component that detects a connection and syncs without user action. |
-| R3 | After two peers sync, both hold the same record. The central server counts as a peer. | S2, S3 | One sync behaviour for every pair of peers, which also enables relaying later (E4). |
-| R4 | No entry is lost, and conflicting reports are shown to the users, never dropped. | S3, S4 | Detecting concurrent changes is built into the stored data, so it is costly to change once deployed (ADR in Part II). |
-| R5 | Two tablets only sync when both squad leaders have switched on P2P mode. | S3 | Needs on-demand discovery and trust between tablets, and rules out background exchange. |
-| R6 | The central server subscribes each tablet to the zones within a role-dependent radius of its position, or to zones it assigns, and sends it only their reports. P2P mode is not limited by zones. | S2, S5 | Needs a server component that tracks positions and subscriptions. It keeps traffic small, so the system scales from small to large incidents. |
+| R1 | Without a connection, a tablet can store new reports, update existing reports, and sync with another tablet in P2P mode. | S1, S3 | Each tablet keeps its own copy of the record. It is expensive to add this to an online design later. |
+| R2 | With a connection, a tablet syncs with the central server automatically. It sends its reports and receives the updates and assignments for its zones. | S2, S6 | A component must detect the connection and sync without user action. |
+| R3 | After two peers sync, both hold the same record. The central server counts as a peer. | S2, S3 | All pairs of peers use one sync behaviour. This also makes relaying possible later (E4). |
+| R4 | No entry is lost. The users see conflicting reports, and the system never drops them. | S3, S4 | The stored data must show which changes were concurrent. This is expensive to change after deployment (ADR in Part II). |
+| R5 | Two tablets only sync when both squad leaders have switched on P2P mode. | S3 | Tablets must find and trust each other only on request. This prevents exchange in the background. |
+| R6 | The central server subscribes each tablet to the zones within a radius of its position, or to zones that the server assigns. The radius depends on the user's role. The server sends each tablet only the reports from its zones. Zones do not limit P2P mode. | S2, S5 | A server component must track positions and subscriptions. Traffic stays small, so the system works for small and large incidents. |
 <!-- Part II notes, not for PA2:
 - Zones are Uber's H3 hexagons; subscription = all hexagons intersecting a circle of radius x around the tablet (figure available). Name H3 in CA1 or an ADR.
 - ADR candidate: the server pushes updates to tablets over a persistent connection (e.g. WebSockets) instead of tablets long-polling every 30 s, because polling costs too much battery and hardware on the tablets. -->
 
 ## 2.4 Quality Attributes and Tradeoffs
 
-Section 1.5 lists all non-functional requirements. Three qualities matter most for the scenarios above, each with a target the proof of concept can test:
+Section 1.5 lists all non-functional requirements. The three qualities below are the most important for our scenarios. The proof of concept can test each target.
 
 | Quality | Target | From |
 |---|---|---|
-| Offline operation | Storing, updating and P2P sync work for a full operational period (12 hours) without the central server. | R1, R5 |
-| No lost reports | Zero lost. A stored report survives crashes and interrupted syncs, and reaches the central server at the next sync. | R3, R4 |
-| Visible report age | Every report shows its author and age, on every tablet. | R1, R2 |
+| Offline operation | Tablets store, update and sync reports in P2P mode for a full operational period (12 hours) without the central server. | R1, R5 |
+| No lost reports | Zero reports lost. A stored report survives crashes and interrupted syncs. It reaches the central server at the next sync. | R3, R4 |
+| Visible report age | Each report shows its author and age on each tablet. | R1, R2 |
 
 <!-- The 12-hour target is a proposal for the team to confirm. -->
 
-**Tradeoff: manual P2P mode against spread of data.** Because leaders sync only when they choose to, reports reach other squads later than they would with automatic exchange. We accept this in return for lower battery use and for leaders keeping control over whom they sync with.
+The main tradeoff is between manual P2P mode and the spread of data. Leaders sync only when they choose to, so reports reach other squads later than with automatic exchange. We accept this delay for lower battery use, and because leaders then control with whom they sync.
 
 <!-- CONFIRM: are battery use and control the team's actual reasons for the manual toggle? -->
 
 ## 2.5 Delivery Roadmap
 
-The roadmap (Figure 2.2) orders epics, sets of user stories that together bring value [L05, slide 20], over one to two years and without dates [SAFe]. Each epic includes both the interface and what runs behind it.
+The roadmap in Figure 2.2 puts epics in order over one to two years. An epic is a set of user stories that together give value [L05, slide 20]. As SAFe recommends, the roadmap shows no dates [SAFe]. Each epic contains the interface and the functions behind it.
 
 ![Figure 2.2: Delivery roadmap](figures/roadmap.png)
 
@@ -139,19 +139,21 @@ The roadmap (Figure 2.2) orders epics, sets of user stories that together bring 
 
 | Epic | The squad leader gets | Delivers | Serves | Value measured by |
 |---|---|---|---|---|
-| E1 | An offline map for logging reports, with sync to the central server | R1–R4 | Squads, command staff | Reports logged offline per shift |
-| E2 | P2P mode, a sync summary and a view for settling conflicts | R1, R5 | Squads | P2P syncs per shift |
+| E1 | An offline map to log reports, with sync to the central server | R1 to R4 | Squads, command staff | Reports logged offline per shift |
+| E2 | P2P mode, a sync summary, and a view to settle conflicts | R1, R5 | Squads | P2P syncs per shift |
 | E3 | Reports from the zones around them | R6 | Division supervisors | Data sent per tablet |
-| E4 | Reports relayed by squads that met their author | R3 | Squads | Time for a report to reach squads |
+| E4 | Reports that other squads relay from their author | R3 | Squads | Time for a report to reach squads |
 | E5 | Links to regional systems | none | Command staff | To be defined |
 
 *Table 2.2: Epics.*
 
-At D1, field trials check that squad leaders can log quickly with gloves on. If not, the interface is refined before E2. At D2, E4 is built only if squads use P2P mode often, since relaying depends on it.
+At D1, field trials check if squad leaders can log reports quickly with gloves on. If they cannot, we improve the interface before E2. At D2, we build E4 only if squads use P2P mode often, because relaying depends on it.
 
 ## 2.6 Pricing and Sustainability
 
-Governments buy through their fire services on yearly budgets and multi-year contracts. Of the models in L05 (slide 23), a yearly subscription per fire service, priced per tablet, therefore fits best, as it does for comparable tools [Avenza], [Esri]. The alternative is TAK's model: built at government expense and given to responders for free [CivTAK]. A subscription needs license management on the central server, but a lapsed license must never stop a tablet in the field, so it is only checked when a tablet syncs with the server. Squads gain their neighbours' reports, command staff a combined picture, and fire services a predictable cost. The cost to crews, being located through their tablets, is discussed in Section 1.3.
+Governments buy through their fire services, with yearly budgets and multi-year contracts. Of the pricing models in L05 (slide 23), a yearly subscription per fire service, priced per tablet, fits best. Comparable tools use the same model [Avenza], [Esri]. The alternative is the TAK model: the government pays for development, and responders get the software free [CivTAK].
+
+A subscription needs license management on the central server. A lapsed license must never stop a tablet in the field, so the server checks the license only when a tablet syncs with it. Squads get the reports of their neighbours, command staff get a combined picture, and fire services get a predictable cost. The disadvantage for crews is that their tablets show where they are, which Section 1.3 discusses.
 
 <!-- Sources (verified by the pricing research, 2026-09-19):
 [Avenza] https://store.avenza.com/pages/pricing (Pro $169.99/device/yr; enterprise volume pricing)
