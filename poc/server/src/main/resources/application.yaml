@@ -1,3 +1,10 @@
 spring:
   application:
     name: server
+  datasource:
+    url: jdbc:postgresql://localhost:5432/wildfiresync
+    username: postgres
+    password: postgres
+  jpa:
+    hibernate:
+      ddl-auto: update
