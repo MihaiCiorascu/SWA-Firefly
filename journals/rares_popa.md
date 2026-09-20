@@ -55,6 +55,9 @@
   we still have to write.
 - **Sunday - own work (1.5h).** I detailed the Lucidchart diagram further, as we are
   preparing to get into more code writing.
+- **Sunday - own work (1h).** I set up the server module with its main parts, so that we
+  have a hello world equivalent flow end to end: the dependencies, an entity, the
+  repository, the mappers and the service.
 
 ### Time estimate
 
@@ -66,4 +69,5 @@
 | Own work: project initialization and structure | 2.5 h |
 | Team sync (20 Sept) | 1 h |
 | Own work: detailing the Lucidchart diagram | 1.5 h |
-| **Total** | **~10.5 h** |
+| Own work: server module setup (dependencies, repository, service, mappers) | 1 h |
+| **Total** | **~11.5 h** |
