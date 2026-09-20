@@ -1,168 +1,72 @@
-# 2. Function
+## 2.4 Example Scenarios
 
-<!--
-DRAFT NOTES (delete before merging into the report)
+To show how the system works in practice, this section presents four scenarios: a crew working with a connection, a crew logging without one, two crews meeting during a shift, and a tablet coming back into coverage. These scenarios cover the requirements that shape the architecture. The remaining requirements are in Appendix A, as user stories.
 
-Section definitions, checked by a literature search on 2026-09-19. Tags:
-VERIFIED = primary text seen. TOC = chapter titles only. UNVERIFIED =
-secondary source or memory. Check anything below VERIFIED before citing it.
+- **Working with a connection**: Alice, who leads a crew on the eastern flank, marks a blocked access road on her tablet, and it shows up on the command staff's map at the Incident Command Post. While she works, reports from the crews near her appear on her own map without her asking for them, each one naming the crew that sent it and the time they sent it. When the command staff assign her crew for the coming shift, the assignment arrives the same way, although anything urgent still reaches her over the radio. What the crews on the far side of the fire report never lands on her tablet, since it is of no use to her.
 
-- 2.1 Vision: neither deck defines it. The course reading has no "vision"
-  chapter. The closest is Coplien & Bjørnvig, Lean Architecture, Ch. 4
-  "Problem Definition" (TOC). A good problem definition states the gap between
-  the current and the required state, is measurable, and is in natural,
-  non-solution language (UNVERIFIED). Pitfall named in that chapter:
-  "creeping featurism" (TOC).
+- **Logging without a connection**: Alice's crew moves below a ridge and loses coverage, and her tablet tells her so. She sees a spot fire across the containment line, calls it in on the radio, and then marks it on her map, noting where it is, how big it is and which way it is moving. Her tablet keeps the report with her name and the time on it, and she carries on logging through the afternoon from the map she had when the signal went.
 
-- 2.2 Scenarios: R&W Ch. 10 "Identifying and Using Scenarios" (TOC).
-  Functional vs system quality scenarios, and the fields overview / state /
-  environment / stimulus / response, are UNVERIFIED. The R&W reference card on
-  viewpoints-and-perspectives.info is VERIFIED: "Have you identified the
-  important usage scenarios and used these to validate the system's functional
-  structure?" For the quality scenario, the safer structure is Bass, Clements &
-  Kazman (SAiP, 3rd ed.): source, stimulus, environment, artifact, response,
-  response measure. The per-attribute "general scenario" sections are TOC; the
-  field wording is UNVERIFIED.
-  Cockburn: goal levels and the basic use case template are VERIFIED (read in
-  full on alistair.cockburn.us). Actor, goal, trigger, main success scenario,
-  extensions, stakeholders and interests.
+- **Two crews meeting**: Alice's crew runs into Bob's crew later that day, and neither of them has had a connection since the morning. They both switch on P2P mode, each tablet shows the other crew, and once the sync is over each of them sees a summary of what came in and what went out. Almost everything lands on both maps, excepting conflicting logs. Take the example of one specific roadt: Alice had marked it blocked and Bob had marked it open. Both tablets show the road with both reports on it, who made them and when, and Alice and Bob settle it between themselves before their crews split up again. This way we ensure that neither report is thrown away.
 
-- 2.3 ASRs: slide 21 criteria are primary. Support: SAiP Ch. 16 "Architecture
-  and Requirements", ASRs captured in a utility tree (16.4) (TOC). Chen et al.,
-  "Characterizing Architecturally Significant Requirements", IEEE Software 2013:
-  cite the paper itself, not Wikipedia (not yet read).
+- **Coming back into coverage**: Bob drives back towards the staging area and his tablet picks up a signal, where it syncs with the central server. After the sync, everything his crew logged that day, along with what he took from Alice, reaches the command staff. In return his tablet takes in the reports it missed for the zones around him.
 
-- 2.4 Quality attributes: Pautasso's categories (design, operational,
-  dependability & security, change, long-term) are UNVERIFIED, so check
-  against the lecture. SAiP Part Two (Ch. 4 onwards) and ATAM (Ch. 21) for
-  tradeoffs (TOC).
+## 2.5 Architecturally Significant Requirements
 
-- 2.5 Roadmap: SAFe definitions VERIFIED (framework.scaledagile.com):
-  Epic = "a significant solution development initiative"; Roadmap = "a schedule
-  of events and milestones that forecasts and communicates planned solution
-  deliverables over a time horizon"; advice to emphasise "themes, epics, or
-  features instead of specific release dates". Wardley evolution stages: cite
-  L05 slide 27. "Zig zagging": probably Nuseibeh's Twin Peaks model (IEEE
-  Computer 2001), UNVERIFIED.
+Not every requirement shapes the architecture. We treat a requirement as architecturally significant if it needs dedicated components, is expensive to change later, or enables or blocks future functions [L05, slide 21]. Six requirements meet at least one of these criteria.
 
-- 2.6 Pricing / sustainability: no support in the reading list. Argue it from
-  L05 slides 22-23 and our own reasoning.
--->
+- **R1, working without a connection.** A tablet can store new reports, update existing ones and sync in P2P mode while offline. Each tablet therefore keeps its own copy of the record instead of reading one from a server. It is also the hardest requirement to add later: assume a live connection first, and removing that assumption means designing the system twice.
 
-## 2.1 Vision
+- **R2, syncing with the central server.** When a tablet has a connection it syncs on its own, sending its reports and receiving the updates and assignments for its zones. Unlike P2P mode this happens without anyone asking, so a component has to notice the connection and act on it.
 
-The system is a shared incident map that crews can use without a connection. It answers the problem in Section 1.1. Its users are crew leaders, division leaders, and the command staff at the Incident Command Post.
+- **R3, single sync behaviour.** After two peers have synced, both hold the same record, and the central server counts as a peer. One behaviour covers every pair that syncs, and a tablet passes on what it received as readily as what its own crew recorded, so a report can reach a crew that never met its author.
 
-Each tablet works offline. When it has a connection, it syncs with a central server, which also sends it assignments. The server sends each tablet only the reports from the zones around it. When two crews meet, their leaders can switch on P2P mode to sync directly. Some information merges automatically, and the crews settle the rest on the spot.
+- **R4, no silent loss.** No report is lost, and where two reports conflict the users see both. Every copy of the record must therefore be able to tell that two changes were made without knowledge of each other. That shapes how reports are stored and exchanged, and it is expensive to change once tablets are in the field. The architectural decisions in Section 3 cover how.
 
-The system is for small and large incidents, and it does not replace voice radio. Relaying information through crews that never met its author is a later step (Section 2.5).
+- **R5, P2P mode under the users' control.** Two tablets only sync when both crew leaders have switched P2P mode on. Tablets must find and trust each other on request, which is a component in its own right, and this rules out exchanging data in the background whenever two tablets pass each other.
 
-## 2.2 Key Scenarios
+- **R6, zones.** The central server subscribes each tablet to the zones within a radius of its position, or to zones it assigns, and sends only the reports from those zones. The server therefore tracks positions and subscriptions, which decides what every sync with it contains. Zones do not limit P2P mode, where two tablets exchange everything they hold.
 
-Table 2.1 lists the scenarios at user-goal level [Cockburn], with the stakeholders from Section 1.3 that each one serves. We detail two of them below.
+## 2.6 Quality Attributes
 
-<!-- Actor and stakeholder names must match Section 1.3. -->
+Several quality attributes were prioritised while designing the system. They describe non-functional requirements that directly influence architectural decisions, and each is given a target that the proof of concept can measure.
 
-| ID | Actor | Goal | Serves |
-|---|---|---|---|
-| S1 | Crew leader | Log an observation without a connection | Crews |
-| S2 | Crew leader | Receive updates and assignments once connected | Crews, command staff |
-| S3 | Two crew leaders | Sync in P2P mode when their crews meet | Crews |
-| S4 | Two crew leaders | Settle conflicting reports about the same thing | Crews |
+- **Offline availability.** Everything a crew does on its own has to keep working with no connection at all: logging a report, changing one, reading the map and syncing with another crew. The target is a full operational period, so twelve hours, without reaching the central server. This is the attribute R1 exists for, and it is why the record lives on the tablet and not on the server.
 
-*Table 2.1: Scenario overview.*
+- **Reliability.** A stored report must survive a crash, a flat battery and a sync that is cut off halfway. It must still reach the central server at the next opportunity. The target is that no report is lost and none is overwritten without a user seeing it happen. Crews act on this map, so a report that quietly disappears is worse than one that arrives late.
 
-### 2.2.1 Logging without a connection (S1)
+- **Transparency.** Every report on the map shows who made it and how long ago. Crews have to be able to judge how much of the picture is current, since a map that looks complete but is an hour old is more dangerous than an obviously empty one.
 
-The leader of Crew 3 works below a ridge with no coverage and sees a spot fire across the containment line. They report it over the radio and then mark it on the map. The report shows immediately, with a "not yet shared" mark until the next sync.
+- **Scalability.** The same system serves a single crew on a small fire and dozens of crews spread over a large one. Zones keep the amount of data a tablet receives roughly constant as the incident grows, which matters most on the weak connections field devices have.
 
-### 2.2.2 Two crews meet (S3, S4)
+## 2.7 Roadmap and Pricing
 
-Crews 3 and 7 meet during the shift, without a connection since the morning briefing. Both leaders switch on P2P mode and afterwards see a summary of what came in and went out. Sometimes the crews recorded different things about the same item, for example a road that one marked as blocked and the other as open. Then both tablets show both reports, and the leaders settle the conflict on the spot. No report from either crew is lost.
+To make the future of the system concrete we have laid it out as a roadmap of four phases, over a horizon of one to two years. The roadmap carries no dates, since development time is impossible to estimate without knowing the size of the team, and following SAFe it names what each phase delivers rather than when it ships [SAFe].
 
-<!-- OPTIONAL FIGURE: timeline of this scenario (two lanes: Crew 3, Crew 7).
-If added, it becomes Figure 2.1 and the roadmap Figure 2.2. -->
+The **proof of concept** is the phase we build during this course, and it is deliberately narrow: the offline map, syncing with the central server, and P2P mode between two tablets. It is not deployed to anyone. Its purpose is to show that the two riskiest parts hold, namely that a tablet stays useful with no connection and that two tablets which worked apart can reconcile what they did.
 
-## 2.3 Architecturally Significant Requirements
+The **minimum viable product** puts the system in the hands of one fire service, on real incidents and alongside the radio. It adds the first interface a crew can actually work with: a map on the tablet for logging and reading reports, and zones, so a crew receives what belongs to the ground it is working on. A decision point sits before this phase, shown in Figure 3: field trials have to show that a crew leader can log a report quickly with gloves on and a fire in front of them. If they cannot, the interface is reworked before anything is built on top of it.
 
-A requirement is architecturally significant if it needs dedicated components, is expensive to change, or enables or blocks future functions [L05, slide 21].
+The **beta** widens the same fire service from one crew to a whole incident: every crew in the field, their division leaders, and the command staff reading the incident picture. Where the MVP shows that the system works for the crew that carries it, the beta shows that it holds when a full operational period of reports flows through it at once, which is the first point at which zones and sync are under a load worth measuring. The experiments in Section 5 target this phase.
 
-| ID | Requirement | From | Why significant |
-|---|---|---|---|
-| R1 | Without a connection, a tablet can store new reports, update existing reports, and sync with another tablet in P2P mode. | S1, S3 | Each tablet keeps its own copy of the record. It is expensive to add this to an online design later. |
-| R2 | With a connection, a tablet syncs with the central server automatically. It sends its reports and receives the updates and assignments for its zones. | S2 | A component must detect the connection and sync without user action. |
-| R3 | After two peers sync, both hold the same record. The central server counts as a peer. | S2, S3 | All pairs of peers use one sync behaviour. This also makes relaying possible later (E4). |
-| R4 | No entry is lost. The users see conflicting reports, and the system never drops them. | S3, S4 | The stored data must show which changes were concurrent, and this is expensive to change after deployment (ADR in Part II). |
-| R5 | Two tablets only sync when both crew leaders have switched on P2P mode. | S3 | Tablets must find and trust each other only on request. This prevents exchange in the background. |
-| R6 | The central server subscribes each tablet to the zones within a radius of its position, or to zones that the server assigns. The radius depends on the user's role. The server sends each tablet only the reports from its zones. Zones do not limit P2P mode. | S2 | A server component must track positions and subscriptions. |
+**Release 1.0** adds mutual aid across agencies and a reworked interface on both fronts: the tablet map the crews use, and a web client for the command staff, who work from a desk rather than a fire line. Two fire services working the same fire each run their own central server, and reports made on one agency's tablets have to reach the crews of the other, whose devices may be on a different version. This is the point at which the system stops serving one organisation and starts serving an incident, and it is where licensing and support begin.
 
-*Table 2.2: Architecturally significant requirements.*
+![Figure 3: Delivery roadmap](figures/roadmap.png)
 
-<!-- Part II notes, not for PA2:
-- Zones are Uber's H3 hexagons; subscription = all hexagons intersecting a circle of radius x around the tablet (figure available). Name H3 in CA1 or an ADR.
-- ADR candidate: the server pushes updates to tablets over a persistent connection (e.g. WebSockets) instead of tablets long-polling every 30 s, because polling costs too much battery and hardware on the tablets. -->
+*Figure 3: Delivery roadmap. Only the proof of concept is built during this course.*
 
-## 2.4 Quality Attributes and Tradeoffs
+Fire services will not hand live crew positions to a server we run, so the system is sold as a licence deployed on the customer's own infrastructure. Of the models in L05 (slide 23) this is a subscription, but an annual licence for software the agency hosts itself, as self-hosted enterprise products have moved from perpetual licences to yearly terms [Atlassian]. It is priced per agency rather than per tablet, since the number of tablets swings with the season and with mutual aid. The minimum viable product is free, so that a fire service can run it for one season without a procurement process, and the licence begins at release 1.0. Annual support follows the licence, commonly 18 to 22 per cent of it, which public buyers negotiate down and cap against escalation [DoD ESI]. Deployment and integration are charged separately.
 
-Section 1.5 lists all non-functional requirements. The three qualities below are the most important for our scenarios. The proof of concept can test each target.
-
-| Quality | Target | From |
-|---|---|---|
-| Offline operation | Tablets store, update and sync reports in P2P mode for a full operational period (12 hours) without the central server. | R1, R5 |
-| No lost reports | Zero reports lost. A stored report survives crashes and interrupted syncs. It reaches the central server at the next sync. | R3, R4 |
-| Visible report age | Each report shows its author and age on each tablet. | R1, R2 |
-
-*Table 2.3: Key quality attributes.*
-
-<!-- The 12-hour target is a proposal for the team to confirm. -->
-
-The main tradeoff is between manual P2P mode and the spread of data. Leaders sync only when they choose to, so reports reach other crews later than with automatic exchange. We accept this delay for lower battery use, and because leaders then control with whom they sync.
-
-<!-- CONFIRM: are battery use and control the team's actual reasons for the manual toggle? -->
-
-## 2.5 Delivery Roadmap
-
-The roadmap in Figure 2.1 puts epics in order over one to two years. An epic is a set of user stories that together give value [L05, slide 20]. As SAFe recommends, the roadmap shows no dates [SAFe]. Each epic contains the interface and the functions behind it.
-
-![Figure 2.1: Delivery roadmap](figures/roadmap.png)
-
-*Figure 2.1: Delivery roadmap. E1 and E2 are built in the proof of concept.*
-
-<!-- Source: figures/roadmap.mmd. Re-render with mmdc after changes. -->
-
-| Epic | The crew leader gets | Delivers | Serves | Value measured by |
-|---|---|---|---|---|
-| E1 | An offline map to log reports, with sync to the central server | R1 to R4 | Crews, command staff | Reports logged offline per shift |
-| E2 | P2P mode, a sync summary, and a view to settle conflicts | R1, R5 | Crews | P2P syncs per shift |
-| E3 | Reports from the zones around them | R6 | Division leaders | Data sent per tablet |
-| E4 | Reports that other crews relay from their author | R3 | Crews | Time for a report to reach crews |
-
-*Table 2.4: Epics.*
-
-At D1, field trials check if crew leaders can log reports quickly with gloves on. If they cannot, we improve the interface before E2. At D2, we build E4 only if crews use P2P mode often, because relaying depends on it.
-
-## 2.6 Pricing and Sustainability
-
-Governments buy through their fire services, with yearly budgets and multi-year contracts. Of the pricing models in L05 (slide 23), a yearly subscription per fire service, priced per tablet, fits best. Comparable tools use the same model [Avenza], [Esri].
-
-A subscription needs license management on the central server. A lapsed license must never stop a tablet in the field, so the server checks the license only when a tablet syncs with it. Crews, command staff and fire services all gain from the system. The cost for crews is that their tablets show where they are (Section 1.3).
-
-<!-- Sources (verified by the pricing research, 2026-09-19):
-[Avenza] https://store.avenza.com/pages/pricing (Pro $169.99/device/yr; enterprise volume pricing)
-[Esri] https://www.esri.com/en-us/arcgis/products/arcgis-field-maps/buy (bundled in user-type licenses)
-Also verified: Technosylva $383k California RFI2 contract, https://statescoop.com/california-wildfire-technology-contracts-fast-procurement/
-Full research: scratchpad pricing_research.md. Tablet Command contract amounts are UNVERIFIED, so don't cite them. -->
+Hosting at the customer decides more than the price. Every agency runs its own server and upgrades on its own schedule, so the mutual aid of release 1.0 has to work between servers of different versions, which falls on R3. Crews, command staff and fire services each gain from the system; the cost falls on the crews, whose tablets show where they are, which Section 2.1 discusses.
 
 ## References
 
-<!-- Renumber to the report's numeric style ([6], [7], ...) when merging. -->
-
 [L05] A. van Deursen, "Problem Analysis, Part II," CS4505 Software Architecture, Lecture 5, TU Delft, Sep. 2026.
 
-[Cockburn] A. Cockburn, *Writing Effective Use Cases*. Boston, MA: Addison-Wesley, 2001.
+[Cockburn] A. Cockburn, _Writing Effective Use Cases_. Boston, MA: Addison-Wesley, 2001.
 
-[SAFe] Scaled Agile, Inc., "Roadmap," *SAFe Framework*. [Online]. Available: https://framework.scaledagile.com/roadmap/ (accessed Sep. 19, 2026).
+[SAFe] Scaled Agile, Inc., "Roadmap," _SAFe Framework_. [Online]. Available: https://framework.scaledagile.com/roadmap/ (accessed Sep. 19, 2026).
 
-[Avenza] Avenza Systems Inc., "Pricing," *Avenza Maps*. [Online]. Available: https://store.avenza.com/pages/pricing (accessed Sep. 19, 2026).
+[DoD ESI] U.S. Department of Defense Enterprise Software Initiative, "Software Maintenance Negotiations Best Practices." [Online]. Available: https://itvmo.gsa.gov/assets/files/Software-Maintenance-Negotiations-Best-Practices.pdf (accessed Sep. 20, 2026).
 
-[Esri] Esri, "Buy ArcGIS Field Maps." [Online]. Available: https://www.esri.com/en-us/arcgis/products/arcgis-field-maps/buy (accessed Sep. 19, 2026).
+[Atlassian] Atlassian, "Farewell to Server." [Online]. Available: https://www.atlassian.com/blog/announcements/farewell-to-server (accessed Sep. 20, 2026).
+
