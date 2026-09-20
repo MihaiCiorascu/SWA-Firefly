@@ -27,17 +27,34 @@ In today's world, climate change has made once-in-a-lifetime natural disasters a
 
 To relieve part of this workload, we propose Firefly, a mobile and web application that lets emergency personnel record and edit structured reports about an ongoing incident directly from the field. The system is offline-first: personnel can create and edit reports with no connectivity at all, and a backend reconciles conflicting edits once connectivity is restored. Because more than one person may edit the same report while both are offline, a thorough conflict-resolution and merging policy was designed and evaluated specifically to avoid discarding safety-critical information. Furthermore, to ensure that emergency personnel have access to the most complete and recent information, even in low connectivity scenarios, we included peer-to-peer synchronization between devices deployed in the field that enter eachother's range.
 
-The architecture of the proposed system is explored in Chapter 3, and the results of a varied set of experiments are outlined in Chapter 4. Finally, a conclusion and a discussion of the future roadmap is presented in Chapter 5.
+The architecture of the proposed system is explored in Chapter 3, and the results of a varied set of experiments are outlined in Chapter 4. The future roadmap is discussed in Section 2.7.
 
 ## 2. Problem and Context Analysis
 
 ### 2.1 Problem Description
 
-During large-scale natural disaster response, coordination runs primarily through a single radio channel, used both to relay information up the chain and to issue orders back down. [[1]](#1)[[2]](#2) Under pressure this channel becomes overcrowded, leading to mismanagement and other failures: congested radio frequencies and a fractured command structure during the Pacific Palisades Fire (2025) [[3]](#3)[[4]](#4)[[5]](#5), and a public dispute over resource allocation during the Gironde wildfires in France (2026), though no official review has yet confirmed its cause. [[7]](#7)[[8]](#8)
+During large-scale natural disaster response, coordination runs primarily through a single radio channel, used both to relay information up the chain and to issue orders back down. [<a href="#1">1</a>][<a href="#2">2</a>] Under pressure this channel becomes overcrowded, leading to mismanagement and other failures: congested radio frequencies and a fractured command structure during the Pacific Palisades Fire (2025) [<a href="#3">3</a>][<a href="#4">4</a>][<a href="#5">5</a>], and a public dispute over resource allocation during the Gironde wildfires in France (2026), though no official review has yet confirmed its cause. [<a href="#7">7</a>][<a href="#8">8</a>]
 
-The same overload falls on the small group of people responsible for coordinating a response, and overworking them can have disastrous consequences: in the 2002 Überlingen mid-air collision, a single air traffic controller managing two positions alone failed to separate two aircraft in time, killing all 71 people aboard. [[6]](#6)
+The same overload falls on the small group of people responsible for coordinating a response, and overworking them can have disastrous consequences: in the 2002 Überlingen mid-air collision, a single air traffic controller managing two positions alone failed to separate two aircraft in time, killing all 71 people aboard. [<a href="#6">6</a>]
 
 We therefore introduce Firefly, a system that lets field workers share incident reports even when the usual communication channels are overloaded, merging conflicting or overlapping reports in cases where this is achievable without loss of information, in order to help reduce and optimize effort during a natural disaster response.
+
+### 2.2 Context View
+
+The Context View shows the boundary between the system and its environment. As the lecture says it, "you design the system, the context is a given" [<a href="#14">14</a>].
+
+Firefly's scope is to coordinate field reports, so every device end up with the same, complete record, connected or not. The boundary is the Incident Command Post: the server is a physical machine at the ICP, not a cloud endpoint, and going beyond it is future work. Voice radio and where to send a crew stay human decisions, outside our scope. Our job is smaller: make sure command staff act on one complete record, not on whatever partial picture arrived first.
+
+Crew leaders use tablets to record offline by default. Syncing happens automatic when a device reconnects, to the ICP or to another tablet. Division leaders and command staff see the current zone-scoped record through the ICP server. When two crews meet, their leaders can opt in to peer-to-peer sync. Since both leaders must agree, tablets never exchange data without the crews knowing it.
+
+Two tools already used in wildfire response help show this problem. ArcGIS Field Maps, used by wildland agencies today, resolves concurrent edits with last-write-wins, and their own fix for real conflicts is manual, done by a database administrator after the fact. ATAK with goTenna or Meshtastic gives device-to-device communication with no cell connection needed, but what it sends is append-only, so a conflict can never happen. Our problem, concurrent offline edits with no automatic way to merge them, sits exactly in this gap between the two tools.
+
+We depend on GPS accuracy for zone subscription, covered more in the Wardley Map below and in Section 3.1. This we have to tolerate, not assume. A fire-authority record system and a weather feed are future work, named here only so the figure stays accurate.
+
+<figure>
+  <img title="" src="../report/figures/context-view.png" alt="context view diagram">
+  <figcaption><em>Context view. The system boundary is the ICP local server. Regional/cloud reach and external record systems are dashed, future work only.</em></figcaption>
+</figure>
 
 ### 2.3 Stakeholders
 
@@ -50,9 +67,24 @@ Plotting the each stakeholder in a Power/Interest grid helps to shed light on wh
   <figcaption><em>Figure 2: Power-Interest Grid for Stakeholders</em> </figcaption>
 </figure>
 
+### Wardley Map
+
+<!-- Placeholder heading, not numbered: 2.4-2.8 are all now taken by Alex's
+and Stefan's real sections, so no clean slot exists. Give it a number once
+the team settles final section order. -->
+
+A Wardley map puts the user and the key system components on two axes: value visible to the user, and evolution stage of the component, from Genesis, "uncertainty about everything, including functionality," through Custom built and Product, to Commodity, "as standard as water and electricity" [<a href="#14">14</a>]. The map itself is not the point, what it shows us is where our effort should go.
+
+Field Reporting is the merge logic that solves concurrent offline edits (Chapter 3). It sits alone in the genesis, high-value quadrant. No existing tool can merge concurrent edits correctly for this problem (Section 2.2), and this is what decides if Firefly's core promise, no edit ever disappears, actually holds. Zone Subscription is still fairly custom, we chose its radius-based H3 subscription on purpose to avoid an edge-of-hexagon blind spot, but it gives less direct value than the merge logic does. Synchronization sits closer to the middle, custom-built for us but kept free of wildfire-specific logic, so it stays more reusable. Device Identity, the tablet hardware and operating system, and the local WiFi or Bluetooth stack all sit near commodity. These are well-understood components, we can just treat them as given instead of building them ourselves.
+
+<figure>
+  <img title="" src="../report/figures/wardley-map.png" alt="wardley map diagram">
+  <figcaption><em>Wardley map of the system's main components. Field Reporting is the one genesis-stage, high-value component, matching its identification as the core domain in Chapter 3.</em></figcaption>
+</figure>
+
 ### 2.4 Example Scenarios
 
-To show how the system works in practice, this section presents four scenarios: a crew working with a connection, a crew logging without one, two crews meeting during a shift, and a tablet coming back into coverage. These scenarios cover the requirements that shape the architecture. The remaining requirements are in Appendix A, as user stories.
+To show how the system works in practice, this section presents four scenarios at user-goal level [<a href="#10">10</a>]: a crew working with a connection, a crew logging without one, two crews meeting during a shift, and a tablet coming back into coverage. These scenarios cover the requirements that shape the architecture. The remaining requirements are in Appendix A, as user stories.
 
 - **Working with a connection**: Alice, who leads a crew on the eastern flank, marks a blocked access road on her tablet, and it shows up on the command staff's map at the Incident Command Post. While she works, reports from the crews near her appear on her own map without her asking for them, each one naming the crew that sent it and the time they sent it. When the command staff assign her crew for the coming shift, the assignment arrives the same way, although anything urgent still reaches her over the radio. What the crews on the far side of the fire report never lands on her tablet, since it is of no use to her.
 
@@ -109,7 +141,7 @@ The **beta** widens the same fire service from one crew to a whole incident: eve
 
 Fire services will not hand live crew positions to a server we run, so the system is sold as a licence deployed on the customer's own infrastructure. Of the models in [<a href="#9">9</a>] this is a subscription, but an annual licence for software the agency hosts itself, as self-hosted enterprise products have moved from perpetual licences to yearly terms [<a href="#13">13</a>]. It is priced per agency rather than per tablet, since the number of tablets swings with the season and with mutual aid. The minimum viable product is free, so that a fire service can run it for one season without a procurement process, and the licence begins at release 1.0. Annual support follows the licence, commonly 18 to 22 per cent of it, which public buyers negotiate down and cap against escalation [<a href="#12">12</a>]. Deployment and integration are charged separately.
 
-Hosting at the customer decides more than the price. Every agency runs its own server and upgrades on its own schedule, so the mutual aid of release 1.0 has to work between servers of different versions, which falls on R3. Crews, command staff and fire services each gain from the system; the cost falls on the crews, whose tablets show where they are, which Section 2.3 discusses.
+Hosting at the customer decides more than the price. Every agency runs its own server and upgrades on its own schedule, so the mutual aid of release 1.0 has to work between servers of different versions, which falls on R3. Crews, command staff and fire services each gain from the system.
 
 ### 2.8 Ethical and Legal Considerations
 
@@ -117,6 +149,84 @@ Hosting at the customer decides more than the price. Every agency runs its own s
 - False or spoofed reports. A system built to keep functioning through network chaos is also an attractive target for someone who wants to inject false situational data during exactly that chaos. Access to this system must be safeguarded by a modern type of user/device authentication.
 - Privacy of people named in reports. Reports tied to a location and an incident may name real people or include personally identifiable information such as: injuries, missing persons, property loss. This is sensitive personal data under regulations such as the GDPR, which constrains retention, who can access merge history, and how long conflicting (pre-merge) versions of a report should be kept.
 - Equity across device capability. Not every field worker or agency has the newest hardware. The final implementation must be lean and performance optimized such that it can run on a large variety of devices.
+
+## 3. Architecture
+
+### 3.1 Components
+
+A bounded context is where one specific domain model and its own language apply [<a href="#9">9</a>]. We split the system in four bounded contexts, all of them ours to build, plus external systems we do not control.
+
+**Field Reporting** is our core domain. It owns what a report and an incident are, and how concurrent edits get merged. This is the one genesis-stage piece in Wardley terms (the Wardley Map, Section 2). **Synchronization** moves events between devices and the server, it is generic enough to work for both the server path and the peer-to-peer path. **Zone Subscription** maps report locations to H3 hexagons, to route deliveries on the server path, it has no role in peer-to-peer mode, by design. **Device Identity** gives each tablet a stable id, used in every event's causal stamp.
+
+*External, not built in this proof of concept*: a future fire-authority record system, a weather feed, and the regional or cloud layer above the ICP server (Section 2.2).
+
+| Upstream | Downstream | Relationship |
+|---|---|---|
+| Field Reporting | Synchronization | Customer/Supplier, Field Reporting defines what needs merging. |
+| Field Reporting | Zone Subscription | Customer/Supplier, only report locations are read. |
+| Zone Subscription | Synchronization | Customer/Supplier, server path only. |
+| Device Identity | Field Reporting, Synchronization | Customer/Supplier, both consume a stable device id. |
+| Field Reporting | External systems | Anti-corruption layer, once built, to shield our model from theirs. |
+
+*Table 3.1: Bounded context dependencies.*
+
+<figure>
+  <img title="" src="../report/figures/context-map.png" alt="bounded context diagram">
+  <figcaption><em>Bounded contexts and their dependencies.</em></figcaption>
+</figure>
+
+### 3.2 Event-Based Domain Model
+
+Table 3.2 lists the events an event-storming pass over the four scenarios in Section 2.4 turns up. For brevity: Offline (logging without a connection), Connected (working with a connection), Meeting (two crews meeting), Reconnect (coming back into coverage).
+
+| Event | Scenario | Operation |
+|---|---|---|
+| Report created | Offline | `CREATE` |
+| Report field updated | Offline, Meeting | `SET_FIELD` |
+| Incident created | Connected | `CREATE` |
+| Incident status changed | Connected | `SET_FIELD` |
+| Field marked conflicted | Meeting | derived |
+| Conflict resolved by a crew leader | Meeting | `RESOLVE_CONFLICT` |
+| Tablet reconnected to server | Reconnect | triggers sync |
+| Tablet synced with server | Reconnect, R2 | sync completes |
+| Two tablets synced in P2P mode | Meeting | sync completes |
+| Position mapped to zones | R6 | derived |
+| Report routed to subscribed tablets | Connected, R6 | delivery |
+
+*Table 3.2: Domain events.*
+
+### 3.3 Elaborating Field Reporting
+
+Field Reporting carries our hardest problem, correctly merging concurrent offline edits.
+
+**Ubiquitous language.** We built our own team terminology for the domain concepts [<a href="#9">9</a>]. An **Incident** is one wildfire response effort. A **Report** is one reportable thing inside an incident. An **Event** is one immutable write to one field, by one device. A **dot** pairs a device id with that device's own local sequence number, and the **causal context** stores what a device already has seen, as a map from device id to counter. Together they make the Dotted Version Vector (DVV) our merge is built on. A **Tier A field** merges by itself, automatic, no person needed. A **Tier B field** has no safe automatic merge, it stays for a crew leader to resolve. A **conflict** is what happens when two events touch the same Tier B field, and neither device knew about the other one.
+
+**Tactical DDD.** The entity **Incident** has an immutable `incidentId`. Its `name` is Tier A, with a fixed tiebreak rule. Its `status` is Tier B, because a status change is a judgement call for a person, not something automatic. The entity **Report** has immutable `reportId` and `incidentId`. Its `reportType` is Tier A, merged by set union. Its `severity` is Tier A too, merged by taking the maximum. Its `location` and `description` stay Tier B, kept for manual resolution. **Event** is its own category, with `eventId`, `operation` (`CREATE`, `SET_FIELD`, or `RESOLVE_CONFLICT`), `field`, `value`, `dot`, `causalContext`, and a `supersedes` field that is only informational. **Dot** and **causalContext** are value objects, together they are the DVV. **MergeService** is the service that applies the Tier A/B policy. Every Tier A policy has to be deterministic, commutative, associative and idempotent, these are the CRDT convergence properties, so every device ends up with the same result no matter the order events arrive in. The Incident, Report, and Event repositories map directly onto the Room DAOs already built. We do not use a Factory, an Incident or a Report is simply created by its first `CREATE` event.
+
+Concurrent resolutions of the same Tier B conflict become a new conflict under the same mechanism, no special case needed.
+
+<figure>
+  <img title="" src="../report/figures/field-reporting-classes.png" alt="field reporting class diagram">
+  <figcaption><em>Field Reporting's entities, Event record, and MergeService.</em></figcaption>
+</figure>
+
+### 3.4 Architectural Decisions
+
+**We chose a two-tier merge policy instead of one single policy.** An always-automatic policy can silently pick a value nobody chose, and that hides a real disagreement. An always-manual policy makes a leader step in on every sync, even for a safe field like severity. Splitting fields by tier gives us both things at once, nothing gets dropped, and only the fields where a wrong automatic choice matters actually need a person.
+
+**We are also splitting sync into two problems, not one.** WorkManager triggers a one-shot sync when connectivity comes back, this is how offline events reach the server. Live zone updates while a tablet is already online need something different, a persistent connection, because long-polling costs too much tablet battery. In practice, a tablet publishes events to a Kafka-style topic, `operation-events`, partitioned by operation ID. A server-side consumer reads this and runs the Merge logic into the Database. A device then gets its data back in one of two ways: through the Query API on reconnect, or, if it is already connected and zone-subscribed, pushed to it over WebSocket or SSE. Both come from the same partitioned event stream, they just answer a different moment in a tablet's connectivity.
+
+### 3.5 How This Connects to Chapter 2
+
+Our bounded contexts match the stakeholders from Section 2.3. Field Reporting serves the crews (Offline, Meeting, and Reconnect scenarios). Zone Subscription serves division leaders and command staff (Connected scenario, R6). Table 3.2 models the same four scenarios from Section 2.4, but as a domain, not as narrated steps. The Tier A/B split is exactly what R4 needs at the data level, no report is lost, this is the "how" that R4 itself points to this chapter for.
+
+<!-- Section 3 numbering: PA1's real, final stakeholder terminology (Section
+2.3) uses different terms (field workers, EOC personnel, owning agency, etc.)
+than crew leader/division leader/command staff, used here and throughout
+Stefan's real content, kept as-is per team decision. Section 3.4 is the
+separate, smaller "20% concept architecture" piece Finch also asks for, the
+rest of Section 3 is PA3 domain modelling proper. Quotes in 3.1 and 3.3 are
+primary, read directly from l05-pa123-2026.pdf's own slide text. -->
 
 ## References
 
@@ -145,3 +255,5 @@ Hosting at the customer decides more than the price. Every agency runs its own s
 <a id="12">[12]</a> U.S. Department of Defense Enterprise Software Initiative, "Software Maintenance Negotiations Best Practices." https://itvmo.gsa.gov/assets/files/Software-Maintenance-Negotiations-Best-Practices.pdf (accessed Sep. 20, 2026)
 
 <a id="13">[13]</a> Atlassian, "Farewell to Server." https://www.atlassian.com/blog/announcements/farewell-to-server (accessed Sep. 20, 2026)
+
+<a id="14">[14]</a> A. van Deursen, "Problem Analysis, Part I," CS4505 Software Architecture, Lecture 2, Delft University of Technology, Sep. 2026.
