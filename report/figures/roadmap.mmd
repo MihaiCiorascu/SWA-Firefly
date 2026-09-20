@@ -1,0 +1,11 @@
+flowchart LR
+    PoC["Proof of concept<br/>offline map, server sync,<br/>P2P mode"]
+    D1{"D1 Can crew leaders<br/>log quickly in the field?"}
+    UI["Rework the interface"]
+    MVP["MVP<br/>tablet map and zones,<br/>one fire service"]
+    Beta["Beta<br/>a whole incident:<br/>crews, division leaders,<br/>command staff"]
+    Rel["Release 1.0<br/>mutual aid across agencies,<br/>reworked tablet and web clients"]
+
+    PoC --> D1
+    D1 -- no --> UI --> D1
+    D1 -- yes --> MVP --> Beta --> Rel
