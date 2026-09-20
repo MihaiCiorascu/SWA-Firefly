@@ -34,3 +34,36 @@
 | Team meeting (13 Sept) | 2 h |
 | **Total** | **~7.5 h** |
 
+
+## Week 2 (14 - 20 September 2026)
+
+### What I did this week
+
+- **Tuesday 15 September - team meeting (2h).** We went deep into how we order events
+  across the system and agreed to use vector clocks or DVV for this. After that we went
+  through the use cases in detail and worked out how the communication between the
+  services should actually happen.
+- **Tuesday - own work (1.5h).** I made the diagram in Lucidchart based on what we
+  agreed, so that the whole team has one thing to look at and guide themselves by.
+- **Saturday 19 September - team meeting (2h).** We discussed the report: how it should
+  look and what goes in it. We already had all the ideas from the previous meetings, so
+  it was mostly a matter of writing them down. We also divided the tasks so that we
+  finish the Finch release in time.
+- **Saturday - own work (2.5h).** After the meeting I initialized the project with the
+  high level directories and structure.
+- **Sunday 20 September - short sync (1h).** We talked about the part of the report that
+  we still have to write.
+- **Sunday - own work (1.5h).** I detailed the Lucidchart diagram further, as we are
+  preparing to get into more code writing.
+
+### Time estimate
+
+| Activity | Estimated time |
+| --- | --- |
+| Team meeting (15 Sept) | 2 h |
+| Own work: Lucidchart diagram | 1.5 h |
+| Team meeting (19 Sept) | 2 h |
+| Own work: project initialization and structure | 2.5 h |
+| Team sync (20 Sept) | 1 h |
+| Own work: detailing the Lucidchart diagram | 1.5 h |
+| **Total** | **~10.5 h** |
