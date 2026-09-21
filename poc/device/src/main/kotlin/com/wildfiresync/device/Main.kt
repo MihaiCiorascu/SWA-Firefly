@@ -1,7 +1,7 @@
 package com.wildfiresync.device
 
-import com.wildfiresync.core.Core
+import com.wildfiresync.core.World
 
 fun main() {
-    println("Device starting (using ${Core.NAME})")
+    println("Device starting (known reports: ${World.EMPTY.reports().size})")
 }
