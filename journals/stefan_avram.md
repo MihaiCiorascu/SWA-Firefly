@@ -37,7 +37,7 @@ On Thursday we had a team meeting (~2h) about merging strategies, so how reports
 
 Saturday morning we had another meeting (~1.5h) to split the tasks for the Finch release and talk through the architecture. In the afternoon, from 15:00 to 20:00, I worked on the PA2 (Function) chapter of the report: the vision, key scenarios, architecturally significant requirements, quality attributes and tradeoffs, the delivery roadmap with a diagram, and a short pricing section. I also looked at how comparable tools are priced and trimmed the chapter down to fit the word budget.
 
-Next I will merge PA2 into the report before the Finch deadline on Monday.
+On Suday, the team working on the report this week met for another hour, where we discussed more on architecture and the status of writing the report. Afterwards, we merged the parts (PA 1, 2 & 3) of the report into a version that contains all of them, fixing any issues that comes with that.
 
 hours:
 
@@ -45,5 +45,7 @@ hours:
 - reading on distributed systems (vector clocks, dotted version vectors) + lecture slides: 3h
 - team meeting on task splitting and architecture (sat 19 sep): 1.5h
 - writing the PA2 (Function) chapter (sat 19 sep, 15:00 - 20:00): 5h
+- sunday discussion (20 sept): 1h
+- merging and fixing small errors(e.g. inconsitencies in terminology): 4h
 
 total: 11.5h
