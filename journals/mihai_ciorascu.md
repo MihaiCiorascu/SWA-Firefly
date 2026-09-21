@@ -49,6 +49,9 @@ After that I started PA3 (4h), the domain model chapter. I went through our scen
 ### Sunday
 Short sync (1h). We talked about what was still left to write. Then we merged the PA1, PA2, and PA3 parts into one report. I picked up Context View, Wardley Map and Architecture sections. I used what I wrote for PA3 for the Architecture section and contributed to the shared file with Context View and Wardley Map as well. Finally, read through the whole report to check for contradictions and words that did not match between sections. (5h)
 
+### Monday
+Lowered the word count and fixed inconsistencies between text and citations & diff subchapters.(2h)
+
 ### Hours
 
 Team meeting on event ordering and use cases (Mon): 2h
@@ -57,5 +60,6 @@ Report meeting and task split (Sat): 2h
 PA3 domain model work (Sat): 4h
 Short sync (Sun): 1h
 Finishing my part of report, merging and checking the report (Sun): 5h
+Lowering word count and fixes. (Mon): 2h
 
-total: 15.5h
+total: 17.5h
