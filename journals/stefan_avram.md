@@ -48,4 +48,4 @@ hours:
 - sunday discussion (20 sept): 1h
 - merging and fixing small errors(e.g. inconsitencies in terminology): 4h
 
-total: 11.5h
+total: 16.5h
