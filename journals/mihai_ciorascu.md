@@ -63,3 +63,26 @@ Finishing my part of report, merging and checking the report (Sun): 5h
 Lowering word count and fixes. (Mon): 2h
 
 total: 17.5h
+
+W4 (21 - 27 sep)
+
+What happened this week:
+
+Went to both lectures.
+
+### Friday
+Team meeting (2h). We split up the implementation work for Heron, everyone took a piece of the PoC and I ended up with P2P.
+
+### Saturday
+Worked on the Android side of P2P (5h). Got 2 devices to find each other over Nearby Connections and exchange a simple test message. Still rough, but the basic connection works :))
+
+After that, put together the peer review presentation (2h).
+
+### Hours
+
+Lectures (Tue, Thu): 4h
+Team meeting on Heron planning (Fri): 2h
+P2P implementation (Sat): 5h
+Presentation prep (Sat): 2h
+
+total: 13h
