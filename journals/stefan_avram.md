@@ -49,3 +49,16 @@ hours:
 - merging and fixing small errors(e.g. inconsitencies in terminology): 4h
 
 total: 16.5h
+
+## W4 (21 - 27 sep)
+
+This week was mostly about the peer review presentation. I skipped the team meeting on Friday and spent those two hours making some small fixes to the presentation instead. I also spent another 2h preparing for the presentation itself. Apart from that I did some more research on my own into distributed systems (~3h) and went through the lecture slides (~2h).
+
+hours:
+
+- small fixes to the presentation (fri 25 sep, instead of the team meeting): 2h
+- preparing for the presentation: 2h
+- own research on distributed systems: 3h
+- lecture slides: 2h
+
+total: 9h
