@@ -43,3 +43,16 @@ Attended a meeting with the team where we discussed how events should be ordered
 * Merge library implementation (3h)
 
 Total: 15h
+
+
+### Week 4
+
+This week I looked over the lecture slides and met with the team on Friday to discuss what we will do following our finch release. We talked about what should we do for the heron release, in terms of PoC and report. I also did some of my own research into how this system should be fault tolerant and scalable when deployed. We prepared and scheduled the presentation, which was pretty difficult since our schedules didn't really align with the other teams'. I also thought about how to write a testing harness and suite for the merge library.
+
+* Lecture slides (2h)
+* Meeting Friday (2h)
+* Presentation prep (2h)
+* Own research distributed systems fault tolerance (2h)
+* Testing for merge library (1h)
+
+Total: 9h
