@@ -31,3 +31,21 @@ Between the meetings, I did my own research into offline-first architecture, syn
 * Individual architecture and synchronization research: 3h
 
 **Total: 12.5h**
+## Week 3 (14 - 20 September 2026)
+
+On Tuesday, 15 September, we had a two-hour team meeting in which we examined how events should be ordered across the system. We compared vector clocks and dotted version vectors and continued refining the use cases and communication between the application, nearby devices, and the backend.
+
+During my individual work, I investigated the minimum data the application needs to store and how conflicts should be handled. I defined the fields required for incidents, reports, and synchronization events, and examined how dotted version vectors can detect whether edits to the same record field are causally ordered or concurrent. I also explored field-specific conflict policies, separating fields that can be merged automatically from fields that must preserve all concurrent values for manual resolution.
+
+On Saturday, 19 September, we had another two-hour team meeting focused on the Finch report. We discussed its structure and content, reviewed the decisions made during the previous meetings, and divided the remaining tasks so that the release could be completed on time.
+
+On Sunday, 20 September, we had a one-hour synchronization meeting to review the report sections that still needed to be written and coordinate the remaining work.
+
+### Time spent
+
+* Team meeting about event ordering, use cases, and communication (15 September): 2h
+* Individual investigation into stored fields and conflict resolution: 3h
+* Team meeting about the Finch report and task division (19 September): 2h
+* Team synchronization meeting (20 September): 1h
+
+**Total: 8h**
