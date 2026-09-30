@@ -1,9 +1,33 @@
 # Personal Journal - Rares Popa
 
-## Week 1 (7 - 13 September 2026)
+## Week 1 (31 August - 4 September 2026)
 
 ### What I did this week
 
+- **Lectures.** Went through the lectures and the slides: how the course is organised,
+  team formation, picking a system, and the three stages of the project (Finch, Heron,
+  Swan) together with what is expected for the proof of concept.
+- **Team formation.** Spent time on the organisational side of the course and on finding
+  a team to work with.
+
+### Time estimate
+
+| Activity | Estimated time |
+| --- | --- |
+| Lectures and slides | 4 h |
+| Course organisation and team formation | 2 h |
+| **Total** | **~6 h** |
+
+
+## Week 2 (7 - 13 September 2026)
+
+### What I did this week
+
+- **Monday 7 September - team meeting (2h).** We selected and developed the project idea:
+  a native application that helps field workers communicate and synchronise information
+  when the network is unreliable. For the proof of concept we settled on wildfire crews:
+  firefighters submit reports from the field and the application merges them and shows
+  the evolving situation on a live map.
 - **Wednesday 9 September - TA meeting (25 min).** The whole team met the TA. We
   explained the idea we had at that moment and asked what is expected from us for the
   project and for the proof of concept.
@@ -23,19 +47,22 @@
   Because we all came with something written, the discussion was much easier than on
   Saturday and we agreed on one version of the idea and on the scope. At the end we split
   the work into clear tasks, each with an owner, to be finished by the next meeting.
+- **Lectures and slides.** Went through the lecture material again this week.
 
 ### Time estimate
 
 | Activity | Estimated time |
 | --- | --- |
+| Team meeting to select the project (7 Sept) | 2 h |
 | TA meeting (9 Sept) | 0.5 h |
 | Team meeting (12 Sept) | 2 h |
 | Own work: writing down the app, use cases, technologies | 3 h |
 | Team meeting (13 Sept) | 2 h |
-| **Total** | **~7.5 h** |
+| Lectures and slides | 2 h |
+| **Total** | **~11.5 h** |
 
 
-## Week 2 (14 - 20 September 2026)
+## Week 3 (14 - 20 September 2026)
 
 ### What I did this week
 
@@ -58,6 +85,8 @@
 - **Sunday - own work (1h).** I set up the server module with its main parts, so that we
   have a hello world equivalent flow end to end: the dependencies, an entity, the
   repository, the mappers and the service.
+- **Lectures and slides.** Went through the lecture material and the slides on the Finch
+  deliverables.
 
 ### Time estimate
 
@@ -70,4 +99,36 @@
 | Team sync (20 Sept) | 1 h |
 | Own work: detailing the Lucidchart diagram | 1.5 h |
 | Own work: server module setup (dependencies, repository, service, mappers) | 1 h |
-| **Total** | **~11.5 h** |
+| Lectures and slides | 2 h |
+| **Total** | **~13.5 h** |
+
+
+## Week 4 (21 - 27 September 2026)
+
+### What I did this week
+
+- **Friday 25 September - team meeting (2h).** We discussed what comes after the Finch
+  release: what the Heron release should contain, both for the proof of concept and for
+  the report.
+- **Friday - own work (2h).** After the meeting I started on the Kafka integration. I
+  looked into how the messages can be monitored, what is needed for that, and then
+  started the implementation.
+- **Saturday - own work (2h).** I started my part of the Heron report, CA2
+  (Architectural Decision Records). I have to write three ADRs, each with the chosen
+  option and three alternatives, so I went through which
+  decisions of ours are challenging and relevant enough to be worth documenting.
+- **Presentation preparation (2h).** We prepared and scheduled the peer review
+  presentation, which took some coordination because our availability did not align well
+  with the other teams' schedules.
+- **Lectures and slides.** Went through the lecture material again this week.
+
+### Time estimate
+
+| Activity | Estimated time |
+| --- | --- |
+| Team meeting about the Heron release (25 Sept) | 2 h |
+| Own work: Kafka integration and message monitoring | 2 h |
+| Own work: Heron report, CA2 (Architectural Decision Records) | 2 h |
+| Presentation preparation and scheduling | 2 h |
+| Lectures and slides | 2 h |
+| **Total** | **~10 h** |
