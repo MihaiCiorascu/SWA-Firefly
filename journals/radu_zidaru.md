@@ -49,3 +49,18 @@ On Sunday, 20 September, we had a one-hour synchronization meeting to review the
 * Team synchronization meeting (20 September): 1h
 
 **Total: 8h**
+
+## Week 4 (21 - 27 September 2026)
+
+This week I again went through the lecture slides. On Friday, 25 September, we had a two-hour team meeting to discuss our next steps after the Finch release. We talked about what the Heron release should contain, both for the proof of concept and for the report. We also prepared and scheduled our presentation, which took some coordination because our availability did not align well with the other teams' schedules.
+
+For my individual work, I looked into how to implement the database schema based on the stored fields and conflict-resolution rules we had defined. The devices will store their data in SQLite and the server in PostgreSQL, so I examined how the same logical schema can be expressed in both databases and how events, records, and conflict information should be stored so that the merge logic can use them. I then started implementing the schema definition in the shared core module.
+
+### Time spent
+
+* Lectures and slides at home: 2h
+* Team meeting about the Heron release (25 September): 2h
+* Presentation preparation and scheduling: 2h
+* Individual work on the database schema design and implementation: 4h
+
+**Total: 10h**
