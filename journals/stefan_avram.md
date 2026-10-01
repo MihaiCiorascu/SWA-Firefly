@@ -33,7 +33,7 @@ total: ~12.5h
 
 ## W3 (14 - 20 sep)
 
-On Thursday we had a team meeting (~2h) about merging strategies, so how reports from different crews get merged when their tablets sync. Separately I spent ~3h reading about distributed systems, mostly vector clocks and dotted version vectors, and going through the lecture slides.
+On Tuesday we had a team meeting (~2h) about merging strategies, so how reports from different crews get merged when their tablets sync. Separately I spent ~3h reading about distributed systems, mostly vector clocks and dotted version vectors, and going through the lecture slides.
 
 Saturday morning we had another meeting (~1.5h) to split the tasks for the Finch release and talk through the architecture. In the afternoon, from 15:00 to 20:00, I worked on the PA2 (Function) chapter of the report: the vision, key scenarios, architecturally significant requirements, quality attributes and tradeoffs, the delivery roadmap with a diagram, and a short pricing section. I also looked at how comparable tools are priced and trimmed the chapter down to fit the word budget.
 
@@ -41,7 +41,7 @@ On Suday, the team working on the report this week met for another hour, where w
 
 hours:
 
-- team meeting on merging strategies (thu 17 sep): 2h
+- team meeting on merging strategies (tue 15 sep): 2h
 - reading on distributed systems (vector clocks, dotted version vectors) + lecture slides: 3h
 - team meeting on task splitting and architecture (sat 19 sep): 1.5h
 - writing the PA2 (Function) chapter (sat 19 sep, 15:00 - 20:00): 5h
