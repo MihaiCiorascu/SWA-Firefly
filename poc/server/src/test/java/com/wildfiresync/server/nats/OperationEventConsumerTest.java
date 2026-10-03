@@ -1,60 +1,50 @@
 package com.wildfiresync.server.nats;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 
-import com.wildfiresync.core.ReportId;
+import com.wildfiresync.core.SetSeverity;
+import com.wildfiresync.server.service.MergeService;
 
 import io.nats.client.Message;
 import io.nats.client.StreamContext;
 
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import tools.jackson.databind.ObjectMapper;
 
 class OperationEventConsumerTest {
 
-	private static final ReportId REPORT = new ReportId("report-1");
+	private final MergeService mergeService = mock(MergeService.class);
 
 	private final OperationEventConsumer consumer =
-			new OperationEventConsumer(mock(StreamContext.class), new ObjectMapper());
+			new OperationEventConsumer(mock(StreamContext.class), new ObjectMapper(), mergeService);
 
 	@Test
-	void mergesAnOperationAndAcknowledgesIt() {
-		Message message = messageWith("""
-				{"nodeId":"tablet-a","seq":1,"reportId":"report-1","severity":4,\
-				"recordedAt":"2026-09-27T10:15:00Z"}""");
+	void passesTheOperationToTheServiceAndAcknowledges() {
+		Message message = messageWith(event("tablet-a", 1, 4));
 
 		consumer.onMessage(message);
 
-		assertEquals(4, consumer.world().severityOf(REPORT).orElseThrow().value());
+		ArgumentCaptor<SetSeverity> captor = ArgumentCaptor.forClass(SetSeverity.class);
+		verify(mergeService).apply(captor.capture());
+		SetSeverity operation = captor.getValue();
+		assertEquals("tablet-a", operation.id().node().value());
+		assertEquals(1, operation.id().seq());
+		assertEquals("report-1", operation.report().value());
+		assertEquals(4, operation.severity());
+		assertEquals(Instant.parse("2026-09-27T10:15:00Z"), operation.recordedAt());
 		verify(message).ack();
-		verify(message, never()).term();
-	}
-
-	@Test
-	void mergesConcurrentOperationsRegardlessOfOrder() {
-		consumer.onMessage(messageWith(event("tablet-a", 1, 3)));
-		consumer.onMessage(messageWith(event("tablet-b", 1, 6)));
-		consumer.onMessage(messageWith(event("tablet-c", 1, 2)));
-
-		assertEquals(6, consumer.world().severityOf(REPORT).orElseThrow().value());
-	}
-
-	@Test
-	void redeliveryOfTheSameOperationChangesNothing() {
-		consumer.onMessage(messageWith(event("tablet-a", 1, 5)));
-		var afterFirst = consumer.world();
-
-		consumer.onMessage(messageWith(event("tablet-a", 1, 5)));
-
-		assertEquals(afterFirst, consumer.world());
 	}
 
 	@Test
@@ -65,7 +55,7 @@ class OperationEventConsumerTest {
 
 		verify(message).term();
 		verify(message, never()).ack();
-		assertTrue(consumer.world().reports().isEmpty());
+		verifyNoInteractions(mergeService);
 	}
 
 	@Test
@@ -76,7 +66,30 @@ class OperationEventConsumerTest {
 
 		verify(message).term();
 		verify(message, never()).ack();
-		assertTrue(consumer.world().reports().isEmpty());
+		verifyNoInteractions(mergeService);
+	}
+
+	@Test
+	void terminatesAnOperationWithAMissingField() {
+		Message message = messageWith("""
+				{"nodeId":"tablet-a","seq":1,"reportId":"report-1","severity":4}""");
+
+		consumer.onMessage(message);
+
+		verify(message).term();
+		verifyNoInteractions(mergeService);
+	}
+
+	@Test
+	void negativelyAcknowledgesWhenTheServiceFails() {
+		doThrow(new IllegalStateException("database down")).when(mergeService).apply(any());
+		Message message = messageWith(event("tablet-a", 1, 4));
+
+		consumer.onMessage(message);
+
+		verify(message).nak();
+		verify(message, never()).ack();
+		verify(message, never()).term();
 	}
 
 	private static String event(String node, long seq, int severity) {

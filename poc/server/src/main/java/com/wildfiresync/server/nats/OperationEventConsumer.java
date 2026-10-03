@@ -1,13 +1,11 @@
 package com.wildfiresync.server.nats;
 
 import java.io.IOException;
-import java.util.concurrent.atomic.AtomicReference;
 
-import com.wildfiresync.core.MergeCore;
 import com.wildfiresync.core.OperationEvent;
 import com.wildfiresync.core.SetSeverity;
 import com.wildfiresync.core.Subjects;
-import com.wildfiresync.core.World;
+import com.wildfiresync.server.service.MergeService;
 
 import io.nats.client.ConsumerContext;
 import io.nats.client.JetStreamApiException;
@@ -36,13 +34,14 @@ public class OperationEventConsumer {
 
 	private final ObjectMapper objectMapper;
 
-	private final AtomicReference<World> world = new AtomicReference<>(World.EMPTY);
+	private final MergeService mergeService;
 
 	private MessageConsumer consumer;
 
-	public OperationEventConsumer(StreamContext stream, ObjectMapper objectMapper) {
+	public OperationEventConsumer(StreamContext stream, ObjectMapper objectMapper, MergeService mergeService) {
 		this.stream = stream;
 		this.objectMapper = objectMapper;
+		this.mergeService = mergeService;
 	}
 
 	@PostConstruct
@@ -73,14 +72,14 @@ public class OperationEventConsumer {
 			return;
 		}
 
-		World merged = world.updateAndGet(current -> MergeCore.apply(current, operation));
-		message.ack();
-		merged.severityOf(operation.report()).ifPresent(severity -> log.info("{} merged: report {} severity {}",
-				operation.id(), operation.report(), severity.value()));
-	}
-
-	public World world() {
-		return world.get();
+		try {
+			mergeService.apply(operation);
+			message.ack();
+		}
+		catch (RuntimeException ex) {
+			log.error("could not apply {}, will retry: {}", operation.id(), ex.toString());
+			message.nak();
+		}
 	}
 
 }
