@@ -5,6 +5,8 @@ plugins {
 
 dependencies {
     implementation(project(":core"))
+    implementation("io.nats:jnats:2.21.1")
+    implementation("tools.jackson.core:jackson-databind:3.1.5")
     testImplementation(kotlin("test"))
 }
 
