@@ -8,3 +8,11 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
+
+wildfiresync:
+  nats:
+    url: nats://localhost:4222
+
+logging:
+  level:
+    com.wildfiresync.server: DEBUG
