@@ -6,6 +6,8 @@ import java.util.Map;
 
 public record CausalContext(Map<NodeId, Long> counters) {
 
+	public static final CausalContext EMPTY = new CausalContext(Map.of());
+
 	public CausalContext {
 		counters = Map.copyOf(counters);
 	}
