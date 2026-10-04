@@ -62,3 +62,18 @@ hours:
 - lecture slides: 2h
 
 total: 9h
+
+## W5 (28 sep - 4 oct)
+
+On Tuesday we had the peer review presentation (~1h). On Thursday we had another meeting with our TA, which took about 45 minutes. I also went through the lectures for ~2h.
+
+The rest of the week I worked on setting up SQLite on the tablet side. The idea is that tablets save all reports locally first and compare with the server once there is connectivity again. For now it's only the first step: the tablet opens a local SQLite database and there is a small example API (ReportService) that the rest of the device code can use without touching SQL, with severity as the only field. The tables themselves come from the database schema MR, so that the device and server schemas match. What still needs to be done is written down as TODOs.
+
+hours:
+
+- peer review presentation (tue 29 sep): 1h
+- TA meeting (thu 1 oct): 0.75h
+- lectures: 2h
+- setting up SQLite on the tablet side: 6.25h
+
+total: 10h
