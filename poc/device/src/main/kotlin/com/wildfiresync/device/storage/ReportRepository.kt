@@ -2,13 +2,10 @@ package com.wildfiresync.device.storage
 
 import com.wildfiresync.core.ReportId
 
+// TODO reports should be derived from the events table, store events and rebuild it instead of writing to it directly
+
 /**
- * EXAMPLE, work in progress: the SQL for reports, kept out of the rest of the device code.
- *
- * Only reads and writes the `severity` column of the `reports` table from the database-schema MR.
- *
- * TODO: in the real design `reports` is derived from the `events` table; changes should be stored as events and
- *  this table rebuilt from them, instead of being written to directly as done here
+ * example, SQL for the severity column of the reports table (database-schema MR)
  */
 class ReportRepository(private val database: LocalDatabase) {
 
@@ -25,7 +22,7 @@ class ReportRepository(private val database: LocalDatabase) {
         }
     }
 
-    /** The stored severity of [report], or null if the report is unknown or has no severity yet. */
+    /** null if the report is unknown or has no severity yet */
     fun findSeverity(report: ReportId): Int? =
         database.connection.prepareStatement("SELECT severity FROM reports WHERE report_id = ?").use { statement ->
             statement.setString(1, report.value())

@@ -14,8 +14,7 @@ class ReportServiceTest {
     private val report = ReportId("report-1")
 
     private val database = LocalDatabase.inMemory().apply {
-        // TODO: apply the real migration from the database-schema MR once it is merged. Until then this is a
-        //  test-only stand-in for its `reports` table, reduced to the columns used here.
+        // TODO once the database-schema MR is merged run its SQL file here instead of this hand-made reports table
         connection.createStatement().use {
             it.execute(
                 """

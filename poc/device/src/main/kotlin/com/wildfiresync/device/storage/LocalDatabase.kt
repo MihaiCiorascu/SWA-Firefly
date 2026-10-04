@@ -4,20 +4,17 @@ import java.nio.file.Path
 import java.sql.Connection
 import java.sql.DriverManager
 
+// TODO run the SQL file from the database-schema MR (V1__initial_schema.sql) on open, nothing creates the tables yet
+// TODO figure out where the file lives on an actual tablet
+
 /**
- * EXAMPLE, work in progress: the SQLite database file the tablet carries with it.
- *
- * This only opens the connection. It does not create any tables: the schema is defined in the database-schema MR
- * (`device/src/main/resources/db/migration/sqlite/V1__initial_schema.sql`) and has to stay identical to the
- * server's, so it must not be redefined here.
- *
- * TODO: apply the schema migrations from the database-schema MR when the database is opened
- * TODO: decide where the database file lives on a real tablet
+ * example for now, just opens the tablet's sqlite file.
+ * don't define tables here, they come from the database-schema MR and have to match the server
  */
 class LocalDatabase private constructor(internal val connection: Connection) : AutoCloseable {
 
     init {
-        // required by the schema: SQLite only enforces foreign keys when they are enabled on each connection
+        // schema needs this, sqlite only enforces foreign keys per connection
         connection.createStatement().use { it.execute("PRAGMA foreign_keys = ON") }
     }
 

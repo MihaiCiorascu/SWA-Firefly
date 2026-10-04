@@ -6,13 +6,13 @@ import com.wildfiresync.device.storage.ReportRepository
 import java.nio.file.Path
 import kotlin.system.exitProcess
 
+// TODO the db has no tables until the SQL file from the database-schema MR has been run on it
+
 /**
- * EXAMPLE: a command-line stand-in for the tablet app, to try out the local storage.
+ * example CLI standing in for the tablet app
  *
- *     device <report-id>              prints the severity this tablet knows for the report
- *     device <report-id> <severity>   saves a new severity for the report
- *
- * TODO: the database file has no tables until the schema from the database-schema MR is applied to it
+ * device <report-id>             print the severity of the report
+ * device <report-id> <severity>  save a new severity
  */
 fun main(args: Array<String>) {
     if (args.size !in 1..2) {
