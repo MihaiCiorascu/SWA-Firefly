@@ -1,6 +1,6 @@
 plugins {
     java
-    id("com.android.application") version "9.4.0" apply false
+    id("com.android.application") version "9.4.1" apply false
     // AGP 9+ has built-in Kotlin support, org.jetbrains.kotlin.android is no
     // longer needed (and is rejected). The Compose compiler plugin is still
     // required separately.
