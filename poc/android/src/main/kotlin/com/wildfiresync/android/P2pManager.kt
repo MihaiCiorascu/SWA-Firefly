@@ -62,6 +62,10 @@ class P2pManager(private val context: Context, private val localName: String) {
 
     private val connectionLifecycleCallback = object : ConnectionLifecycleCallback() {
         override fun onConnectionInitiated(endpointId: String, info: ConnectionInfo) {
+            if (info.endpointName == localName) {
+                connectionsClient.rejectConnection(endpointId)
+                return
+            }
             endpointNames[endpointId] = info.endpointName
             // Auto-accept for this milestone. A production version would show
             // info.authenticationDigits on both screens and require a human to
@@ -99,6 +103,10 @@ class P2pManager(private val context: Context, private val localName: String) {
 
     private val endpointDiscoveryCallback = object : EndpointDiscoveryCallback() {
         override fun onEndpointFound(endpointId: String, info: DiscoveredEndpointInfo) {
+            // We advertise and discover at the same time, so we can find ourselves.
+            if (info.endpointName == localName) {
+                return
+            }
             endpointNames[endpointId] = info.endpointName
             status.value = "Found ${info.endpointName}, connecting..."
             connectionsClient.requestConnection(localName, endpointId, connectionLifecycleCallback)
