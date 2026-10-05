@@ -26,6 +26,8 @@ android {
 }
 
 dependencies {
+    implementation(project(":core"))
+
     implementation(platform("androidx.compose:compose-bom:2026.09.00"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.material3:material3")
@@ -36,4 +38,8 @@ dependencies {
     implementation("androidx.core:core-ktx:1.19.1")
 
     implementation("com.google.android.gms:play-services-nearby:19.5.0")
+
+    // The android.jar JSON classes are stubs in plain JVM unit tests, so use the real library there.
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20250517")
 }
