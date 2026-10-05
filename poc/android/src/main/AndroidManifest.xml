@@ -18,8 +18,11 @@
          nearby device discovery. -->
     <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES" />
 
-    <!-- Below Android 12, Bluetooth scanning still required fine location. -->
+    <!-- Below Android 12, Bluetooth scanning needed location. Play Services' Nearby
+         discovery also rejects startDiscovery without coarse location granted at
+         runtime on newer versions (ApiException 8034), so it is requested everywhere. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
     <!-- Play Services itself needs this even though the actual P2P link is offline. -->
     <uses-permission android:name="android.permission.INTERNET" />

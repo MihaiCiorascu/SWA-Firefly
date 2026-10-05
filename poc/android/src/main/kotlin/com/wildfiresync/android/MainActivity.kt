@@ -60,14 +60,16 @@ class MainActivity : ComponentActivity() {
 private fun requiredPermissions(): Array<String> {
     val permissions = mutableListOf<String>()
 
+    // Needed on every version: below Android 12 for Bluetooth scanning, and on newer
+    // ones Play Services' startDiscovery still fails with 8034 without coarse location.
+    permissions += Manifest.permission.ACCESS_FINE_LOCATION
+    permissions += Manifest.permission.ACCESS_COARSE_LOCATION
+
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         // Android 12+ (API 31+)
         permissions += Manifest.permission.BLUETOOTH_ADVERTISE
         permissions += Manifest.permission.BLUETOOTH_CONNECT
         permissions += Manifest.permission.BLUETOOTH_SCAN
-    } else {
-        // Below Android 12, Bluetooth scanning needed location instead.
-        permissions += Manifest.permission.ACCESS_FINE_LOCATION
     }
 
     permissions += Manifest.permission.ACCESS_WIFI_STATE
