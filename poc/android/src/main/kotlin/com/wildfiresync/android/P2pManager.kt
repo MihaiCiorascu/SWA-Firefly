@@ -45,7 +45,13 @@ class P2pManager(private val context: Context, private val localName: String) {
     // a single-screen PoC.
     val status = mutableStateOf("Idle")
     val connectedPeers = mutableStateListOf<String>()
-    val lastReceivedMessage = mutableStateOf("")
+
+    // Called with the sender's advertised name and the raw bytes of every received payload.
+    // The transport does not interpret them, whoever plugs in (merge, storage) decodes.
+    var onPayload: ((peerName: String, bytes: ByteArray) -> Unit)? = null
+
+    // True between start() and stop(), so a lost connection can restart the search.
+    private var running = false
 
     // endpointId -> advertised name, so the UI can show a name instead of a raw id.
     private val endpointNames = mutableMapOf<String, String>()
@@ -85,6 +91,9 @@ class P2pManager(private val context: Context, private val localName: String) {
             val name = endpointNames.remove(endpointId) ?: endpointId
             connectedPeers.remove(name)
             status.value = "Disconnected from $name"
+            if (running && connectedEndpointIds.isEmpty()) {
+                startSearching()
+            }
         }
     }
 
@@ -104,7 +113,7 @@ class P2pManager(private val context: Context, private val localName: String) {
         override fun onPayloadReceived(endpointId: String, payload: Payload) {
             if (payload.type == Payload.Type.BYTES) {
                 val bytes = payload.asBytes() ?: return
-                lastReceivedMessage.value = String(bytes, StandardCharsets.UTF_8)
+                onPayload?.invoke(endpointNames[endpointId] ?: endpointId, bytes)
             }
         }
 
@@ -135,6 +144,11 @@ class P2pManager(private val context: Context, private val localName: String) {
             return
         }
 
+        running = true
+        startSearching()
+    }
+
+    private fun startSearching() {
         status.value = "Searching..."
 
         val advertisingOptions = AdvertisingOptions.Builder().setStrategy(STRATEGY).build()
@@ -154,6 +168,7 @@ class P2pManager(private val context: Context, private val localName: String) {
     }
 
     fun stop() {
+        running = false
         connectionsClient.stopAdvertising()
         connectionsClient.stopDiscovery()
         connectionsClient.stopAllEndpoints()
@@ -163,12 +178,12 @@ class P2pManager(private val context: Context, private val localName: String) {
         status.value = "Idle"
     }
 
-    fun sendTestMessage() {
+    /** Sends the bytes to every connected peer. Returns false when nobody is connected. */
+    fun send(bytes: ByteArray): Boolean {
         if (connectedEndpointIds.isEmpty()) {
-            return
+            return false
         }
-        val message = "Hello from $localName at ${System.currentTimeMillis()}"
-        val payload = Payload.fromBytes(message.toByteArray(StandardCharsets.UTF_8))
-        connectionsClient.sendPayload(connectedEndpointIds.toList(), payload)
+        connectionsClient.sendPayload(connectedEndpointIds.toList(), Payload.fromBytes(bytes))
+        return true
     }
 }

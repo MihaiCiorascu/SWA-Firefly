@@ -16,12 +16,20 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.wildfiresync.core.NodeId
+import com.wildfiresync.core.OpId
+import com.wildfiresync.core.ReportId
+import com.wildfiresync.core.SetSeverity
+import java.time.Instant
+import kotlin.random.Random
 
 class MainActivity : ComponentActivity() {
 
@@ -76,6 +84,21 @@ private fun requiredPermissions(): Array<String> {
 @Composable
 fun P2pScreen(localName: String, manager: P2pManager) {
     var started by remember { mutableStateOf(false) }
+    var nextSeq by remember { mutableLongStateOf(1L) }
+    var lastSent by remember { mutableStateOf("") }
+    var lastReceived by remember { mutableStateOf("") }
+
+    // Throwaway demo: a real consumer would hand the decoded operation to the merge
+    // library and the local store instead of just showing it.
+    LaunchedEffect(manager) {
+        manager.onPayload = { peer, bytes ->
+            lastReceived = try {
+                "${OperationWire.decode(bytes)} from $peer"
+            } catch (e: Exception) {
+                "undecodable payload from $peer (${e.message})"
+            }
+        }
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -116,14 +139,28 @@ fun P2pScreen(localName: String, manager: P2pManager) {
         }
 
         Button(
-            onClick = { manager.sendTestMessage() },
+            onClick = {
+                val operation = SetSeverity(
+                    OpId(NodeId(localName), nextSeq),
+                    ReportId("report-1"),
+                    Random.nextInt(SetSeverity.MIN, SetSeverity.MAX + 1),
+                    Instant.now(),
+                )
+                if (manager.send(OperationWire.encode(operation))) {
+                    lastSent = "$operation"
+                    nextSeq += 1
+                }
+            },
             enabled = manager.connectedPeers.isNotEmpty()
         ) {
-            Text("Send test message")
+            Text("Send severity op")
         }
 
-        if (manager.lastReceivedMessage.value.isNotEmpty()) {
-            Text("Last received: ${manager.lastReceivedMessage.value}")
+        if (lastSent.isNotEmpty()) {
+            Text("Last sent: $lastSent")
+        }
+        if (lastReceived.isNotEmpty()) {
+            Text("Last received: $lastReceived")
         }
     }
 }
