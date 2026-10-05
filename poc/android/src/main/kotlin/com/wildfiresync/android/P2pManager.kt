@@ -157,14 +157,20 @@ class P2pManager(private val context: Context, private val localName: String) {
             SERVICE_ID,
             connectionLifecycleCallback,
             advertisingOptions
-        ).addOnFailureListener { e -> Log.e(TAG, "startAdvertising failed", e) }
+        ).addOnFailureListener { e ->
+            Log.e(TAG, "startAdvertising failed", e)
+            status.value = "Advertising failed: ${e.message}"
+        }
 
         val discoveryOptions = DiscoveryOptions.Builder().setStrategy(STRATEGY).build()
         connectionsClient.startDiscovery(
             SERVICE_ID,
             endpointDiscoveryCallback,
             discoveryOptions
-        ).addOnFailureListener { e -> Log.e(TAG, "startDiscovery failed", e) }
+        ).addOnFailureListener { e ->
+            Log.e(TAG, "startDiscovery failed", e)
+            status.value = "Discovery failed: ${e.message}"
+        }
     }
 
     fun stop() {
