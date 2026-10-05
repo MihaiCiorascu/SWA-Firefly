@@ -14,7 +14,20 @@ out/
 .DS_Store
 Thumbs.db
 
+### Local SQLite databases (device) ###
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
 ### Local config / secrets ###
 *.log
 .env
 application-local.yaml
+
+### Android ###
+local.properties
+*.apk
+*.aab
+.cxx/
+captures/
