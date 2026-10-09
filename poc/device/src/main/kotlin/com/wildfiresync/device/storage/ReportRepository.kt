@@ -1,31 +1,38 @@
 package com.wildfiresync.device.storage
 
-import com.wildfiresync.core.ReportId
+import java.util.UUID
 
-// TODO reports should be derived from the events table, store events and rebuild it instead of writing to it directly
-
-/**
- * example, SQL for the severity column of the reports table (database-schema MR)
- */
 class ReportRepository(private val database: LocalDatabase) {
 
-    fun saveSeverity(report: ReportId, severity: Int) {
+    fun insert(report: UUID, incident: UUID) {
+        database.connection.prepareStatement("INSERT INTO reports (report_id, incident_id) VALUES (?, ?)").use {
+            it.setString(1, report.toString())
+            it.setString(2, incident.toString())
+            it.executeUpdate()
+        }
+    }
+
+    fun exists(report: UUID): Boolean =
+        database.connection.prepareStatement("SELECT 1 FROM reports WHERE report_id = ?").use { statement ->
+            statement.setString(1, report.toString())
+            statement.executeQuery().use { it.next() }
+        }
+
+    fun raiseSeverity(report: UUID, severity: Int) {
         database.connection.prepareStatement(
-            """
-            INSERT INTO reports (report_id, severity) VALUES (?, ?)
-            ON CONFLICT (report_id) DO UPDATE SET severity = excluded.severity
-            """.trimIndent(),
+            "UPDATE reports SET severity = max(coalesce(severity, ?), ?) WHERE report_id = ?",
         ).use { statement ->
-            statement.setString(1, report.value())
+            statement.setInt(1, severity)
             statement.setInt(2, severity)
+            statement.setString(3, report.toString())
             statement.executeUpdate()
         }
     }
 
     /** null if the report is unknown or has no severity yet */
-    fun findSeverity(report: ReportId): Int? =
+    fun findSeverity(report: UUID): Int? =
         database.connection.prepareStatement("SELECT severity FROM reports WHERE report_id = ?").use { statement ->
-            statement.setString(1, report.value())
+            statement.setString(1, report.toString())
             statement.executeQuery().use { result ->
                 if (result.next()) result.getInt(1).takeUnless { result.wasNull() } else null
             }
