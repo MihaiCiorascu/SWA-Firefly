@@ -98,4 +98,15 @@ class ReportServiceTest {
         assertEquals(OpId(node, 2), reports.eventsOf(second).single().dot())
     }
 
+    @Test
+    fun `lists the reports with their severity`() {
+        val first = reports.createReport(incident)
+        val second = reports.createReport(incident)
+        reports.setSeverity(second, 3)
+
+        val listed = reports.reports().associate { it.report.toString() to it.severity }
+
+        assertEquals(mapOf(first.value() to null, second.value() to 3), listed)
+    }
+
 }

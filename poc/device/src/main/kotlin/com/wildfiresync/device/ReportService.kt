@@ -8,6 +8,7 @@ import com.wildfiresync.device.storage.EventRepository
 import com.wildfiresync.device.storage.LocalDatabase
 import com.wildfiresync.device.storage.ReplicaStateRepository
 import com.wildfiresync.device.storage.ReportRepository
+import com.wildfiresync.device.storage.StoredReport
 import java.time.Clock
 import java.util.UUID
 
@@ -47,6 +48,9 @@ class ReportService(private val database: LocalDatabase, private val clock: Cloc
 
     /** null if this tablet doesn't know a severity for the report */
     fun severityOf(report: ReportId): Int? = reports.findSeverity(report.uuid())
+
+    /** every report this tablet knows about */
+    fun reports(): List<StoredReport> = reports.findAll()
 
     /** the events behind a report, what will be sent to the server and other tablets */
     fun eventsOf(report: ReportId): List<Event> = events.forRecord(report.uuid())

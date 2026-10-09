@@ -38,4 +38,24 @@ class ReportRepository(private val database: LocalDatabase) {
             }
         }
 
+    fun findAll(): List<StoredReport> =
+        database.connection.prepareStatement("SELECT report_id, incident_id, severity FROM reports ORDER BY report_id")
+            .use { statement ->
+                statement.executeQuery().use { result ->
+                    buildList {
+                        while (result.next()) {
+                            add(
+                                StoredReport(
+                                    UUID.fromString(result.getString(1)),
+                                    result.getString(2)?.let(UUID::fromString),
+                                    result.getInt(3).takeUnless { result.wasNull() },
+                                ),
+                            )
+                        }
+                    }
+                }
+            }
+
 }
+
+data class StoredReport(val report: UUID, val incident: UUID?, val severity: Int?)
