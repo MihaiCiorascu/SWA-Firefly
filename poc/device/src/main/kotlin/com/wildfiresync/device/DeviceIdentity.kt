@@ -1,4 +1,4 @@
-package com.wildfiresync.android
+package com.wildfiresync.device
 
 import android.content.Context
 import java.util.UUID

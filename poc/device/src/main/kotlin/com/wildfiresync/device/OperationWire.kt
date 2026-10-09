@@ -1,4 +1,4 @@
-package com.wildfiresync.android
+package com.wildfiresync.device
 
 import com.wildfiresync.core.OperationEvent
 import com.wildfiresync.core.SetSeverity

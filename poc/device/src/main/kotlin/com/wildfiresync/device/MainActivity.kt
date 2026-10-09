@@ -1,4 +1,4 @@
-package com.wildfiresync.android
+package com.wildfiresync.device
 
 import android.Manifest
 import android.os.Build

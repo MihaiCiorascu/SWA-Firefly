@@ -6,8 +6,8 @@ The transport sends raw bytes, merge and persistence are not part of this module
 
 ## Run the two-device test
 
-1. Build the APK: `./gradlew :android:assembleDebug` (from `poc/`). It ends up in
-   `android/build/outputs/apk/debug/android-debug.apk`.
+1. Build the APK: `./gradlew :device:assembleDebug` (from `poc/`). It ends up in
+   `device/build/outputs/apk/debug/device-debug.apk`.
 2. Install it on both devices (`adb install -r <apk>`, or copy the file over and open it).
 3. Turn on Bluetooth and Wi-Fi on both devices. Nearby Connections does not do it for you.
 4. Open the app on both, tap **Start P2P**, and allow every permission prompt (nearby

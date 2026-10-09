@@ -8,7 +8,7 @@ pluginManagement {
 
 plugins {
     // Lets Gradle download a matching JDK automatically when the toolchain a
-    // module asks for (Java 21, for core/server/device) isn't installed
+    // module asks for (Java 21, for core and server) isn't installed
     // locally, instead of failing with "toolchain download repositories have
     // not been configured". No-op on a machine that already has a matching
     // JDK, so this is safe for everyone on the team regardless of what they
@@ -18,4 +18,4 @@ plugins {
 
 rootProject.name = "wildfire-sync"
 
-include("core", "server", "device", "android")
+include("core", "server", "device")

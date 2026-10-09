@@ -5,10 +5,6 @@ plugins {
     // longer needed (and is rejected). The Compose compiler plugin is still
     // required separately.
     id("org.jetbrains.kotlin.plugin.compose") version "2.4.20" apply false
-    // Declared once here so :device's own use of this plugin doesn't conflict
-    // with the Kotlin version AGP's built-in Kotlin support already puts on
-    // the shared buildscript classpath.
-    id("org.jetbrains.kotlin.jvm") version "2.4.20" apply false
 }
 
 allprojects {
@@ -22,10 +18,10 @@ allprojects {
 }
 
 subprojects {
-    // The android module is set up by the Android Gradle Plugin instead, which
+    // The device module is set up by the Android Gradle Plugin instead, which
     // manages its own Java/Kotlin compilation and conflicts with the plain
     // java plugin applied here.
-    if (name != "android") {
+    if (name != "device") {
         apply(plugin = "java")
 
         java {
