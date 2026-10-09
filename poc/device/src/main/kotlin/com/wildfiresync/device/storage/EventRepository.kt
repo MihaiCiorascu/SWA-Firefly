@@ -27,7 +27,7 @@ class EventRepository(private val database: LocalDatabase) {
             statement.setString(9, event.dot().node().value())
             statement.setLong(10, event.dot().seq())
             statement.setString(11, Json.write(event.causalContext()))
-            statement.setString(12, event.supersedes()?.let { ids -> Json.write(ids.map { it.toString() }.sorted()) })
+            statement.setString(12, event.supersedes()?.let { Json.write(it) })
             statement.executeUpdate()
         }
     }
