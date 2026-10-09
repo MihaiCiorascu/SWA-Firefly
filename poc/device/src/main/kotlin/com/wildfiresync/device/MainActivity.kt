@@ -11,9 +11,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -21,6 +25,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -43,9 +48,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             MaterialTheme {
-                Surface(modifier = Modifier.fillMaxSize()) {
-                    P2pScreen(localName = localName, manager = p2pManager)
-                }
+                TabletApp(localName = localName, p2pManager = p2pManager)
             }
         }
     }
@@ -53,6 +56,33 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         p2pManager.stop()
         super.onDestroy()
+    }
+}
+
+private enum class Screen(val label: String) {
+    REPORTS("Reports"),
+    P2P("P2P"),
+}
+
+@Composable
+private fun TabletApp(localName: String, p2pManager: P2pManager) {
+    var screen by rememberSaveable { mutableStateOf(Screen.REPORTS) }
+
+    Scaffold(
+        topBar = {
+            PrimaryTabRow(selectedTabIndex = screen.ordinal, modifier = Modifier.statusBarsPadding()) {
+                Screen.entries.forEach {
+                    Tab(selected = screen == it, onClick = { screen = it }, text = { Text(it.label) })
+                }
+            }
+        },
+    ) { padding ->
+        Surface(modifier = Modifier.fillMaxSize().padding(padding)) {
+            when (screen) {
+                Screen.REPORTS -> ReportsScreen()
+                Screen.P2P -> P2pScreen(localName = localName, manager = p2pManager)
+            }
+        }
     }
 }
 
