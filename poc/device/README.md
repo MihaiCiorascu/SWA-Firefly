@@ -1,10 +1,18 @@
-# Android P2P proof of concept
+# Tablet app
 
-Two Android devices find each other over Google Nearby Connections, connect, and
-exchange a `SetSeverity` operation as JSON (same fields as core's `OperationEvent`).
-The transport sends raw bytes, merge and persistence are not part of this module.
+The android app for the tablet, three tabs:
 
-## Run the two-device test
+- Reports: create a report and set its severity. saved in the tablet's sqlite db as events
+  (schema in `src/main/assets/db/migration/sqlite`, same as the server's)
+- Server: send a `SetSeverity` op to NATS, the server merges it. on the emulator the
+  docker-compose NATS is at `nats://10.0.2.2:4222`
+- P2P: two Android devices find each other over Google Nearby Connections, connect, and
+  exchange a `SetSeverity` operation as JSON (same fields as core's `OperationEvent`).
+  The transport sends raw bytes, merging what comes in is not done yet.
+
+Unit tests: `./gradlew :device:testDebugUnitTest`, the db ones run on Robolectric.
+
+## Run the two-device P2P test
 
 1. Build the APK: `./gradlew :device:assembleDebug` (from `poc/`). It ends up in
    `device/build/outputs/apk/debug/device-debug.apk`.
