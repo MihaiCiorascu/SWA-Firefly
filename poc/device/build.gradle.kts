@@ -47,7 +47,7 @@ dependencies {
     implementation("com.google.android.gms:play-services-nearby:19.5.0")
 
     implementation("io.nats:jnats:2.21.1")
-    implementation("tools.jackson.core:jackson-databind:3.1.5")
+    implementation("com.google.code.gson:gson:2.14.0")
 
     testImplementation(kotlin("test-junit"))
     // The android.jar JSON classes are stubs in plain JVM unit tests, so use the real library there.
