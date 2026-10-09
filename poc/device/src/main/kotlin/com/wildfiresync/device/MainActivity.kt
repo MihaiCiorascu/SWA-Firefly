@@ -61,6 +61,7 @@ class MainActivity : ComponentActivity() {
 
 private enum class Screen(val label: String) {
     REPORTS("Reports"),
+    SERVER("Server"),
     P2P("P2P"),
 }
 
@@ -80,6 +81,7 @@ private fun TabletApp(localName: String, p2pManager: P2pManager) {
         Surface(modifier = Modifier.fillMaxSize().padding(padding)) {
             when (screen) {
                 Screen.REPORTS -> ReportsScreen()
+                Screen.SERVER -> ServerScreen()
                 Screen.P2P -> P2pScreen(localName = localName, manager = p2pManager)
             }
         }
