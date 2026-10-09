@@ -9,7 +9,8 @@ android {
 
     defaultConfig {
         applicationId = "com.wildfiresync.device"
-        minSdk = 26
+        // the schema uses STRICT tables, sqlite only has them from 3.37 which android ships from 34
+        minSdk = 34
         targetSdk = 37
         versionCode = 1
         versionName = "0.1"
