@@ -20,14 +20,10 @@ data class ReportsUiState(val reports: List<StoredReport> = emptyList(), val err
 
 class ReportsViewModel(application: Application) : AndroidViewModel(application) {
 
-    // one thread for the db so the connection is never used from two places at once
+    // one thread for the db, keeps the writes in order
     private val db = Dispatchers.IO.limitedParallelism(1)
 
-    private val database = lazy {
-        val file = application.getDatabasePath("device.db")
-        file.parentFile?.mkdirs()
-        LocalDatabase.open(file.toPath())
-    }
+    private val database = lazy { LocalDatabase.open(application) }
 
     private val reports by lazy { ReportService(database.value) }
 

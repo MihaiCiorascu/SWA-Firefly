@@ -15,14 +15,18 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
 
+@RunWith(RobolectricTestRunner::class)
 class ReportServiceTest {
 
     private val node = NodeId("tablet-a")
 
     private val incident = UUID.fromString("2f1c6a43-0d5e-4c4b-9a3e-6c1f0b8e7d21")
 
-    private val database = LocalDatabase.inMemory().apply { ReplicaStateRepository(this).enrol(node) }
+    private val database = LocalDatabase.inMemory(RuntimeEnvironment.getApplication()).apply { ReplicaStateRepository(this).enrol(node) }
 
     private val reports = ReportService(database, Clock.fixed(Instant.parse("2026-10-09T10:15:00Z"), ZoneOffset.UTC))
 

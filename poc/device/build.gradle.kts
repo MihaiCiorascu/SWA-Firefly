@@ -19,6 +19,10 @@ android {
         compose = true
     }
 
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
@@ -41,7 +45,6 @@ dependencies {
 
     implementation("com.google.android.gms:play-services-nearby:19.5.0")
 
-    implementation("org.xerial:sqlite-jdbc:3.53.4.0")
     implementation("io.nats:jnats:2.21.1")
     implementation("tools.jackson.core:jackson-databind:3.1.5")
 
@@ -49,4 +52,5 @@ dependencies {
     // The android.jar JSON classes are stubs in plain JVM unit tests, so use the real library there.
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20250517")
+    testImplementation("org.robolectric:robolectric:4.17")
 }
