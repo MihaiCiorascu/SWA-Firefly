@@ -210,13 +210,31 @@ Concurrent resolutions of the same Tier B conflict become a new conflict under t
   <figcaption><em>Figure 6: Field Reporting's entities, Event record, and MergeService.</em></figcaption>
 </figure>
 
-### 3.4 Architectural Decisions
+### 3.4 Container View
+
+The container view opens up the Firefly box from the context view (Figure 1). Firefly runs as four parts, plus the merge code they share.
+
+- **Tablet app.** One per crew, held by the crew leader. It is a native Android app (Kotlin, Jetpack Compose), because it has to work for a whole shift with no connection and needs Bluetooth and WiFi for P2P mode. It keeps a full copy of the record in a local SQLite store and never needs the server to stay useful (R1).
+- **Message broker.** NATS JetStream carries everything between the tablets and the server. Tablets publish their events on the `operation-events` stream, one subject per report (`events.operation.<reportId>`), and the server publishes merged reports on a second stream, under `report.<hexagon>.<reportId>`. JetStream keeps messages until they are read and ignores a message whose id it has already seen. That id is the event's dot, which means a tablet can resend after a sync was cut off without creating duplicates. Tablets reach it over cellular.
+- **ICP server.** A Spring Boot service on the machine at the Incident Command Post. It merges incoming events, works out which hexagon each report is in, assigns hexagons to tablets, and enrols new tablets.
+- **Server store.** PostgreSQL, with the same logical schema as the tablet store: every event, plus the reports and incidents derived from them.
+
+The merge code lives in a shared library, `core`, used by both the tablet app and the server. It is not a container on its own, but it is why both sides end up with the same record: they run the same code on the same events (R3).
+
+Everything between a tablet and the server goes through the broker instead of straight to the server, and a tablet can hand off its events while the server is busy. The link between two tablets does not touch the ICP at all, P2P mode only needs both crew leaders to switch it on (R5).
+
+<figure>
+  <img title="" src="../report/figures/c4-container.png" alt="C4 container diagram">
+  <figcaption><em>Figure 7: C4 container view.</em></figcaption>
+</figure>
+
+### 3.5 Architectural Decisions
 
 **We chose a two-tier merge policy instead of one single policy.** An always-automatic policy can silently pick a value nobody chose, hiding a real disagreement. An always-manual policy makes a leader step in on every sync, even for a safe field like severity. Splitting fields by tier gives us both: nothing gets dropped, and only fields where a wrong automatic choice matters need a person.
 
 **We are also splitting sync into two problems, not one.** WorkManager triggers a one-shot sync when connectivity returns, this is how offline events reach the server. Live zone updates while a tablet is already online need a persistent connection instead, since long-polling costs too much battery. A tablet publishes events to a Kafka-style topic, `operation-events`, partitioned by operation ID. A server-side consumer reads this and runs the Merge logic into the Database. A device gets its data back either through the Query API on reconnect, or, if already connected and zone-subscribed, pushed over WebSocket or SSE. Both draw from the same partitioned event stream, just at different moments in a tablet's connectivity.
 
-### 3.5 How This Connects to Chapter 2
+### 3.6 How This Connects to Chapter 2
 
 Our bounded contexts match the stakeholders from Section 2.3. Field Reporting serves the crews (Offline, Meeting, and Reconnect scenarios). Zone Subscription serves division leaders and command staff (Connected scenario, R6). Table 3.2 models the same four scenarios from Section 2.5 as a domain, not as narrated steps. The Tier A/B split is exactly what R4 needs at the data level, no report is lost, which is the "how" R4 itself points here for.
 
