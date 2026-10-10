@@ -228,13 +228,34 @@ Everything between a tablet and the server goes through the broker instead of st
   <figcaption><em>Figure 7: C4 container view.</em></figcaption>
 </figure>
 
-### 3.5 Architectural Decisions
+### 3.5 Component View
+
+Only two containers have logic of their own, the tablet app and the ICP server, so those are the ones we open up.
+
+**Tablet app** (Figure 8). The screens only talk to `ReportService`, the one way to change a report. It turns every change into an event, stamps it with the tablet's next dot and its causal context, and stores it together with the derived report in one transaction. A crash cannot leave the two out of step. The local store holds the events, the replica state (the tablet's id, next sequence number and causal context), and the derived reports. The sync client sends the events the broker has not acknowledged yet, and reads the reports for the tablet's hexagons. `P2pManager` finds the other tablet over Nearby Connections. Both hand what they receive to `ReportService`, which merges it with the merge library. An event from the server and one from another tablet take the same path.
+
+<figure>
+  <img title="" src="../report/figures/c4-component-tablet.png" alt="tablet app component diagram">
+  <figcaption><em>Figure 8: Components of the tablet app.</em></figcaption>
+</figure>
+
+**ICP server** (Figure 9). The event consumer reads the `operation-events` stream. `MergeService` applies each event with the same merge library and stores it through the event repository. The zone service does the H3 work: the hexagon of every report and, from a tablet's position, the hexagons that tablet gets. The report publisher puts merged reports and hexagon assignments back on the broker. Enrolment, left out of the figure, gives each tablet its id when it is set up at the ICP, the id every dot carries.
+
+<figure>
+  <img title="" src="../report/figures/c4-component-server.png" alt="ICP server component diagram">
+  <figcaption><em>Figure 9: Components of the ICP server.</em></figcaption>
+</figure>
+
+Not all of this is built yet. The proof of concept has the screens, `ReportService`, the local store and `P2pManager` on the tablet, a sync client that sends single severity changes, and the event consumer with a `MergeService` that only logs on the server. The zone service, report publisher and the report stream are still to do, and so is enrolment, the tablet generates its own id for now.
+
+
+### 3.6 Architectural Decisions
 
 **We chose a two-tier merge policy instead of one single policy.** An always-automatic policy can silently pick a value nobody chose, hiding a real disagreement. An always-manual policy makes a leader step in on every sync, even for a safe field like severity. Splitting fields by tier gives us both: nothing gets dropped, and only fields where a wrong automatic choice matters need a person.
 
 **We are also splitting sync into two problems, not one.** WorkManager triggers a one-shot sync when connectivity returns, this is how offline events reach the server. Live zone updates while a tablet is already online need a persistent connection instead, since long-polling costs too much battery. A tablet publishes events to a Kafka-style topic, `operation-events`, partitioned by operation ID. A server-side consumer reads this and runs the Merge logic into the Database. A device gets its data back either through the Query API on reconnect, or, if already connected and zone-subscribed, pushed over WebSocket or SSE. Both draw from the same partitioned event stream, just at different moments in a tablet's connectivity.
 
-### 3.6 How This Connects to Chapter 2
+### 3.7 How This Connects to Chapter 2
 
 Our bounded contexts match the stakeholders from Section 2.3. Field Reporting serves the crews (Offline, Meeting, and Reconnect scenarios). Zone Subscription serves division leaders and command staff (Connected scenario, R6). Table 3.2 models the same four scenarios from Section 2.5 as a domain, not as narrated steps. The Tier A/B split is exactly what R4 needs at the data level, no report is lost, which is the "how" R4 itself points here for.
 
