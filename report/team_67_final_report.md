@@ -285,13 +285,26 @@ We follow the scenarios from Section 2.5. The offline one is split in two, since
   <figcaption><em>Figure 13: Getting the reports for a zone.</em></figcaption>
 </figure>
 
-### 3.8 Architectural Decisions
+### 3.8 Deployment View
+
+Firefly does not run in the cloud (Section 2.2). The server side runs on one physical machine at the Incident Command Post: the broker, the ICP server and PostgreSQL, started together with Docker Compose. Tablets reach it over cellular when they have coverage and keep working offline when they do not. Two tablets in P2P mode talk directly over Bluetooth or WiFi and never go through the ICP.
+
+Tablets need Android 14 or newer, since the tablet store uses SQLite's STRICT tables, which Android only ships from version 14.
+
+If the machine at the ICP goes down, only the server path stops. Tablets keep working and keep syncing with each other, and they catch up with the server once it is back, since every tablet still holds all of its events.
+
+<figure>
+  <img title="" src="../report/figures/c4-deployment.png" alt="C4 deployment diagram">
+  <figcaption><em>Figure 14: C4 deployment view.</em></figcaption>
+</figure>
+
+### 3.9 Architectural Decisions
 
 **We chose a two-tier merge policy instead of one single policy.** An always-automatic policy can silently pick a value nobody chose, hiding a real disagreement. An always-manual policy makes a leader step in on every sync, even for a safe field like severity. Splitting fields by tier gives us both: nothing gets dropped, and only fields where a wrong automatic choice matters need a person.
 
 **We are also splitting sync into two problems, not one.** WorkManager triggers a one-shot sync when connectivity returns, this is how offline events reach the server. Live zone updates while a tablet is already online need a persistent connection instead, since long-polling costs too much battery. A tablet publishes events to a Kafka-style topic, `operation-events`, partitioned by operation ID. A server-side consumer reads this and runs the Merge logic into the Database. A device gets its data back either through the Query API on reconnect, or, if already connected and zone-subscribed, pushed over WebSocket or SSE. Both draw from the same partitioned event stream, just at different moments in a tablet's connectivity.
 
-### 3.9 How This Connects to Chapter 2
+### 3.10 How This Connects to Chapter 2
 
 Our bounded contexts match the stakeholders from Section 2.3. Field Reporting serves the crews (Offline, Meeting, and Reconnect scenarios). Zone Subscription serves division leaders and command staff (Connected scenario, R6). Table 3.2 models the same four scenarios from Section 2.5 as a domain, not as narrated steps. The Tier A/B split is exactly what R4 needs at the data level, no report is lost, which is the "how" R4 itself points here for.
 
