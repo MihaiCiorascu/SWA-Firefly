@@ -249,13 +249,49 @@ Only two containers have logic of their own, the tablet app and the ICP server, 
 Not all of this is built yet. The proof of concept has the screens, `ReportService`, the local store and `P2pManager` on the tablet, a sync client that sends single severity changes, and the event consumer with a `MergeService` that only logs on the server. The zone service, report publisher and the report stream are still to do, and so is enrolment, the tablet generates its own id for now.
 
 
-### 3.6 Architectural Decisions
+### 3.6 Code View
+
+The C4 code level would zoom into single classes. We skip it apart from Field Reporting, whose classes Figure 6 already shows. The rest maps one to one onto the components above and is easier to read in the repository than in a diagram.
+
+### 3.7 Runtime Views
+
+We follow the scenarios from Section 2.5. The offline one is split in two, since logging and syncing happen at different times.
+
+**Logging without a connection** (Figure 10). Alice's crew loses coverage and she marks a spot fire. `ReportService` stores it as events with her tablet's next dots, and nothing waits on a connection.
+
+<figure>
+  <img title="" src="../report/figures/runtime-offline.png" alt="logging offline sequence diagram">
+  <figcaption><em>Figure 10: Logging without a connection.</em></figcaption>
+</figure>
+
+**Back into coverage** (Figure 11). When cellular coverage returns, the sync client sends every unsent event on `events.operation.<reportId>`, with its dot as message id, and marks it sent once the broker acknowledges it. If the connection drops halfway, the next attempt sends the rest again and the broker drops what it already has. The server merges each event, stores it, and publishes the merged report under its hexagon, where every tablet reading that hexagon picks it up.
+
+<figure>
+  <img title="" src="../report/figures/runtime-reconnect.png" alt="back into coverage sequence diagram">
+  <figcaption><em>Figure 11: Back into coverage.</em></figcaption>
+</figure>
+
+**Two crews meeting** (Figure 12). Alice and Bob both switch on P2P mode and their tablets connect over Nearby Connections. Each sends the events the other has not seen, which it can tell from the other's causal context, and both merge. Tier A fields like severity settle on their own. A Tier B field changed on both tablets keeps both values, shown with who made each and when. Once Alice and Bob agree, the choice goes out as a `RESOLVE_CONFLICT` event, which merges like any other.
+
+<figure>
+  <img title="" src="../report/figures/runtime-p2p.png" alt="P2P meeting sequence diagram">
+  <figcaption><em>Figure 12: Two crews meeting in P2P mode.</em></figcaption>
+</figure>
+
+**Getting the reports for a zone** (Figure 13). A tablet publishes its position on `position.<deviceId>`. The zone service takes the hexagons within its radius, larger for division leaders, plus any hexagons the server assigned it, and the server publishes the list on `assign.<deviceId>`. The tablet then requests `report.<hexagon>.*` for each hexagon, which returns the latest version of every report in it, and keeps reading those subjects for new ones. Since the server picks the hexagons, an assignment can change what a tablet sees without the tablet moving.
+
+<figure>
+  <img title="" src="../report/figures/runtime-zones.png" alt="zone update sequence diagram">
+  <figcaption><em>Figure 13: Getting the reports for a zone.</em></figcaption>
+</figure>
+
+### 3.8 Architectural Decisions
 
 **We chose a two-tier merge policy instead of one single policy.** An always-automatic policy can silently pick a value nobody chose, hiding a real disagreement. An always-manual policy makes a leader step in on every sync, even for a safe field like severity. Splitting fields by tier gives us both: nothing gets dropped, and only fields where a wrong automatic choice matters need a person.
 
 **We are also splitting sync into two problems, not one.** WorkManager triggers a one-shot sync when connectivity returns, this is how offline events reach the server. Live zone updates while a tablet is already online need a persistent connection instead, since long-polling costs too much battery. A tablet publishes events to a Kafka-style topic, `operation-events`, partitioned by operation ID. A server-side consumer reads this and runs the Merge logic into the Database. A device gets its data back either through the Query API on reconnect, or, if already connected and zone-subscribed, pushed over WebSocket or SSE. Both draw from the same partitioned event stream, just at different moments in a tablet's connectivity.
 
-### 3.7 How This Connects to Chapter 2
+### 3.9 How This Connects to Chapter 2
 
 Our bounded contexts match the stakeholders from Section 2.3. Field Reporting serves the crews (Offline, Meeting, and Reconnect scenarios). Zone Subscription serves division leaders and command staff (Connected scenario, R6). Table 3.2 models the same four scenarios from Section 2.5 as a domain, not as narrated steps. The Tier A/B split is exactly what R4 needs at the data level, no report is lost, which is the "how" R4 itself points here for.
 
