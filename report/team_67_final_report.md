@@ -19,7 +19,29 @@ Radu Zidaru
 
 ## Table of Contents
 
-TODO
+- [1. Introduction](#1-introduction)
+- [2. Problem and Context Analysis](#2-problem-and-context-analysis)
+  - [2.1 Problem Description](#21-problem-description)
+  - [2.2 Context View](#22-context-view)
+  - [2.3 Stakeholders](#23-stakeholders)
+  - [2.4 Wardley Map](#24-wardley-map)
+  - [2.5 Example Scenarios](#25-example-scenarios)
+  - [2.6 Architecturally Significant Requirements](#26-architecturally-significant-requirements)
+  - [2.7 Quality Attributes](#27-quality-attributes)
+  - [2.8 Roadmap and Pricing](#28-roadmap-and-pricing)
+  - [2.9 Ethical and Legal Considerations](#29-ethical-and-legal-considerations)
+- [3. Architecture](#3-architecture)
+  - [3.1 Components](#31-components)
+  - [3.2 Event-Based Domain Model](#32-event-based-domain-model)
+  - [3.3 Elaborating Field Reporting](#33-elaborating-field-reporting)
+  - [3.4 Container View](#34-container-view)
+  - [3.5 Component View](#35-component-view)
+  - [3.6 Code View](#36-code-view)
+  - [3.7 Runtime Views](#37-runtime-views)
+  - [3.8 Deployment View](#38-deployment-view)
+  - [3.9 Architectural Decisions](#39-architectural-decisions)
+  - [3.10 How This Connects to Chapter 2](#310-how-this-connects-to-chapter-2)
+- [References](#references)
 
 ## 1. Introduction
 
