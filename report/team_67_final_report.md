@@ -27,7 +27,7 @@ Climate change has made major natural disasters common. First responders often w
 
 We propose Firefly, an app that lets emergency personnel record and edit incident reports from the field. The system works offline: personnel can create and edit reports with no connection, and a backend merges conflicting edits once connectivity returns. Since more than one person can edit the same report while offline, we designed a conflict-resolution policy that avoids losing safety-critical information. We also added peer-to-peer sync between devices that are near each other, so personnel get the most complete picture even with low connectivity.
 
-Chapter 3 covers the architecture. Section 2.8 covers the roadmap.
+Chapter 3 covers the architecture. Chapter 4 records two architectural decisions. Section 2.8 covers the roadmap.
 
 ## 2. Problem and Context Analysis
 
@@ -106,7 +106,7 @@ Not every requirement shapes the architecture. We treat one as architecturally s
 
 - **R5, P2P mode under the users' control.** Two tablets only sync once both crew leaders switch P2P mode on. Tablets must find and trust each other on request, which rules out exchanging data in the background whenever two tablets pass each other.
 
-- **R6, zones.** The central server subscribes each tablet to the zones within a radius of its position, or to zones it assigns, and sends only reports from those zones. Zones do not limit P2P mode, where two tablets exchange everything they hold.
+- **R6, zones.** A tablet subscribes to the zones within a radius of its position, or to zones assigned to it, and receives only reports from those zones. Zones do not limit P2P mode, where two tablets exchange everything they hold.
 
 ### 2.7 Quality Attributes
 
@@ -214,11 +214,65 @@ Concurrent resolutions of the same Tier B conflict become a new conflict under t
 
 **We chose a two-tier merge policy instead of one single policy.** An always-automatic policy can silently pick a value nobody chose, hiding a real disagreement. An always-manual policy makes a leader step in on every sync, even for a safe field like severity. Splitting fields by tier gives us both: nothing gets dropped, and only fields where a wrong automatic choice matters need a person.
 
-**We are also splitting sync into two problems, not one.** WorkManager triggers a one-shot sync when connectivity returns, this is how offline events reach the server. Live zone updates while a tablet is already online need a persistent connection instead, since long-polling costs too much battery. A tablet publishes events to a Kafka-style topic, `operation-events`, partitioned by operation ID. A server-side consumer reads this and runs the Merge logic into the Database. A device gets its data back either through the Query API on reconnect, or, if already connected and zone-subscribed, pushed over WebSocket or SSE. Both draw from the same partitioned event stream, just at different moments in a tablet's connectivity.
+**Sync has two directions, and both go through NATS.** A tablet sends its events to NATS when it gets a connection. The server reads them, merges them, and saves the result (Section 4.1). The server then sends each merged report back through NATS. A tablet receives only the reports for its own hexagon and the ones around it (Section 4.2).
 
 ### 3.5 How This Connects to Chapter 2
 
 Our bounded contexts match the stakeholders from Section 2.3. Field Reporting serves the crews (Offline, Meeting, and Reconnect scenarios). Zone Subscription serves division leaders and command staff (Connected scenario, R6). Table 3.2 models the same four scenarios from Section 2.5 as a domain, not as narrated steps. The Tier A/B split is exactly what R4 needs at the data level, no report is lost, which is the "how" R4 itself points here for.
+
+## 4. Architectural Decision Records
+
+This chapter covers two decisions: how events get from a tablet to the server, and how reports get back.
+
+### 4.1 ADR 1: How Events Travel from Device to Server
+
+**Context.** A tablet creates events offline and sends them to the server at the Incident Command Post (ICP) when it reconnects (R2). The server merges them and saves the result. Three things make this hard. First, a sync can be cut off halfway, and no event may be lost (R4, Reliability). Second, at shift change a whole division reconnects within minutes, and each tablet carries twelve hours of events (Scalability). Third, the server is one machine at the ICP, so what runs on it has to be small and easy to operate.
+
+**Options.** We looked at four options, in two groups. In the first two, the tablet gives its events straight to the server or to its database. In the last two, another program sits in between: it saves the events first, and the server merges them later.
+
+**HTTP request.** The tablet puts its events in one request and sends it. The server merges the events, saves the result in the database, and then answers. The tablet waits for that answer. This is the simplest option: there is no extra program to run, and when something fails the tablet knows at once, because it gets an error. The weak point is shift change. Every tablet waits while the server merges its events, so when a whole division sends at the same time, the server falls behind and answers slowly. A tablet that waits too long gives up and sends again. Each repeat is more work for a server that is already behind, so the surge makes itself worse.
+
+**Direct database write.** Here no server program stands between the tablet and the database. Each tablet logs in to the database at the ICP and adds its events to a table. The merge runs later, inside the database or as a job that starts every few seconds. Saving a row is fast, so tablets do not wait for the merge, and there is one program less to build. This option has two problems. First, every tablet needs a login to the database. A stolen tablet could then read or change any report, which is the risk described in Section 2.9. Second, every tablet has to know exactly what the tables look like. When we change a table, tablets with an older version of the app can no longer write to it. Agencies update on their own schedule, so this breaks Compatibility across versions.
+
+**Kafka.** Kafka is a message log: a program that receives messages, saves them on disk in order, and lets other programs read them later. The tablet sends its events to Kafka and gets a confirmation once they are saved. The server reads the events from Kafka and merges them at its own speed. This solves shift change. A tablet is done as soon as Kafka has saved its events, and the server can take minutes to catch up while no tablet waits. It also solves a sync that is cut off, because the tablet knows which events were confirmed and which were not. But Kafka is normally run on a group of machines. Confluent's guide for production lists three machines with 64 GB of memory each [<a href="#12">12</a>]. Kafka can run on one small machine, but it is not sized for that. Kafka's client is also made for servers, not for phones. The usual way to connect an app is through an extra service in front of Kafka, the REST Proxy [<a href="#13">13</a>]. We would have to run that as well.
+
+**NATS JetStream.** NATS is also a message log, and JetStream is the part of it that saves messages on disk [<a href="#14">14</a>]. For the tablet it works the same way as Kafka: send the events, get a confirmation once they are saved, and the server reads them later. The difference is size. The NATS server is one small program that typically uses about 15 MB of memory [<a href="#15">15</a>]. A tablet can connect to it directly, also over WebSocket [<a href="#16">16</a>].
+
+**Decision.** We chose NATS JetStream. The context sets three conditions: no event is lost, shift change does not slow the tablets down, and everything runs on one machine. NATS JetStream is the only option that meets all three without a new problem. A tablet gets a confirmation only after its events are on disk, so it knows which ones to send again. Events wait in NATS while the server merges, so no tablet waits for the server. And NATS is one small program.
+
+The other options each fail somewhere. With the HTTP request, tablets wait for the merge, so it fails at shift change. The direct database write meets the three conditions, but it gives every tablet a database login and breaks tablets with an older app version. Kafka meets the first two, but it is sized for a group of machines and needs the REST Proxy next to it.
+
+**Consequences.** A tablet marks an event as sent only after NATS confirms that it is saved. If a sync is cut off halfway, the tablet sends the unconfirmed events next time. This meets R4. The same event can arrive twice, for example when a confirmation is lost and the tablet sends the event again. A duplicate changes nothing, because every event has a dot and the merge is idempotent (Section 3.3).
+
+At shift change, events wait in NATS and the server merges them at its own speed. NATS servers can also be linked together, so the regional or cloud layer from Section 2.2 stays possible.
+
+The cost is one more program to install and watch at the ICP, next to our server and database.
+
+### 4.2 ADR 2: How Reports Travel from Server to Device
+
+**Context.** When a tablet is online and subscribed to its zones (R6), new reports from those zones should reach it quickly, as in the Connected scenario. Tablets run on battery for a twelve-hour operational period, and the network at a fire is weak and drops often. Whatever we choose has to save battery and recover from frequent drops without missing reports.
+
+**Options.** A normal HTTP request only works one way: the tablet asks and the server answers. The server cannot send anything on its own. The four options are four ways around this.
+
+**Short polling.** The tablet asks the server "anything new?" on a timer, for example every ten seconds. The server answers at once, most of the time with "nothing". This is the simplest option and it works on every network. The problem is the timer. With a short timer, reports arrive fast, but the tablet's radio never rests and the battery does not last twelve hours. With a long timer the battery lasts, but a report about a blocked road can arrive minutes late. No timer gives both.
+
+**Long polling.** The tablet asks "anything new?", but the server does not answer until it has a report. Then the tablet asks again right away. Reports arrive almost at once, and there are no empty answers. But every report still costs a full new request. The network at a fire is weak, so a request that waits a long time is often cut off before the answer comes, and the tablet has to start over. Each restart uses battery and can delay a report.
+
+**Server-Sent Events (SSE).** The tablet sends one request and the server never closes it. Each time there is a new report, the server writes it into this open connection. SSE also handles drops: when the tablet reconnects, it tells the server the last report it received, and the server continues from there. SSE only goes from server to tablet, which is all this direction needs. But the tablet already keeps a NATS connection open to send events (ADR 1), so SSE would be a second open connection. We would also have to build the service that holds these connections and remembers what each tablet has received.
+
+**WebSocket.** A WebSocket is one connection that stays open, and both sides can send on it at any time. On its own it cannot continue after a drop; the app has to build that. In our case NATS does it. The NATS server accepts WebSocket connections [<a href="#16">16</a>], so the tablet can send its events (ADR 1) and receive reports over the same connection, and after a drop NATS continues from the last message the tablet received.
+
+**Decision.** We chose WebSocket, through NATS. The context asks for three things: reports arrive quickly, the battery lasts twelve hours, and no report is missed after a drop. Short polling cannot give the first two together. Long polling gives fast reports, but it spends battery on repeated requests over a weak network.
+
+SSE and WebSocket both give all three. The difference between them is what we have to build. With SSE we add a second connection and write the service behind it. With WebSocket we use the NATS connection the tablet already has (ADR 1), and NATS already continues after a drop. So WebSocket through NATS meets the three conditions with nothing extra to build or run.
+
+**Consequences.** The tablet only talks to NATS and never calls the server. NATS keeps two message logs, one per direction. Tablets write events to the first and the server reads them (ADR 1). The server writes reports to the second and tablets read them. The server needs no extra service to send reports to tablets.
+
+After each merge, the server finds the H3 hexagon of the report and publishes the full report under a name that holds the hexagon and the report id: `report.<hexagon>.<reportId>`. NATS keeps only the newest message per name, so it holds one message per report: its latest version. A tablet finds its own hexagon from its GPS position and subscribes to that hexagon and the ones around it (R6). It first receives the latest version of every report there, then each new version as it is published. After a drop, it continues from the last message it received.
+
+One open connection uses less battery than polling. It still uses some, because both sides send small messages to check that the connection is alive.
+
+The decision has two costs. First, when a report moves to another hexagon, the server also has to tell the old hexagon that the report left. Otherwise tablets there keep an old copy. Second, the server sends a full report and not single events. The message has to hold enough for the tablet to merge it with its own unsent edits and still find conflicts (Section 3.3).
 
 ## References
 
@@ -243,3 +297,13 @@ Our bounded contexts match the stakeholders from Section 2.3. Field Reporting se
 <a id="10">[10]</a> Licenseware, "Software Vendor Price Increases in 2025." Licenseware.io. https://licenseware.io/software-vendor-price-increases-in-2025/ (accessed Sep. 21, 2026)
 
 <a id="11">[11]</a> A. van Deursen, "Problem Analysis, Part I," CS4505 Software Architecture, Lecture 2, Delft University of Technology, Sep. 2026.
+
+<a id="12">[12]</a> Confluent, "Confluent Platform System Requirements." Docs.confluent.io. https://docs.confluent.io/platform/current/installation/system-requirements.html (accessed Oct. 11, 2026)
+
+<a id="13">[13]</a> Confluent, "Confluent REST Proxy for Apache Kafka." Docs.confluent.io. https://docs.confluent.io/platform/current/kafka-rest/index.html (accessed Oct. 11, 2026)
+
+<a id="14">[14]</a> NATS, "JetStream." Docs.nats.io. https://docs.nats.io/nats-concepts/jetstream (accessed Oct. 11, 2026)
+
+<a id="15">[15]</a> NATS, "What is NATS." Docs.nats.io. https://docs.nats.io/nats-concepts/what-is-nats (accessed Oct. 11, 2026)
+
+<a id="16">[16]</a> NATS, "Connect over WebSocket." Docs.nats.io. https://docs.nats.io/running-a-nats-service/configuration/websocket (accessed Oct. 11, 2026)
