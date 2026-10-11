@@ -77,3 +77,25 @@ hours:
 - setting up SQLite on the tablet side: 6.25h
 
 total: 10h
+
+## W6 (5 - 11 oct)
+
+On Friday we had a team meeting (~1h) and a 30 min meeting with our TA, where she went over her feedback with us.
+
+The rest of Friday I worked on the tablet side. First I moved the local storage onto the database schema that got merged. Every change is now saved as an event (with the tablet's next sequence number and causal context), and the reports table gets updated from that event in the same transaction. Then I merged the android module into the device module, so there is only one tablet app now. sqlite-jdbc and Jackson 3 don't fit an android app, so the storage now uses android's own SQLite and the NATS sender uses Gson. The two CLIs became a Reports screen and a Server screen in the app, next to the P2P screen. Since the schema uses STRICT tables the app needs Android 14 or newer. I tested it on the emulator against the server running locally (creating reports, setting severity, sending to NATS).
+
+Over the weekend I worked on CA1 for the Heron release. I first looked at what the slides ask for and how the JitAuction sample report does it. Then I wrote the C4 views (container, components for the tablet and the server, code, runtime and deployment) and made the diagrams for them. On Sunday I went through the older parts of the architecture chapter and fixed what didn't match the implementation anymore (Kafka, WorkManager, Room). I also renamed the report to the Heron report, added a table of contents and put the command staff web client in the architecture.
+
+hours:
+
+- team meeting (fri 9 oct): 1h
+- TA meeting (fri 9 oct): 0.5h
+- saving report changes as events on the shared schema: 2h
+- merging the android and device modules into one tablet app (android sqlite, gson, reports and server screens, tests): 4.5h
+- testing the app on the emulator against the server: 1h
+- slides + JitAuction sample report for CA1: 1h
+- CA1 container view (fri 9 oct): 1.5h
+- CA1 component, code, runtime and deployment views (sat 10 oct): 5h
+- syncing the architecture chapter with the implementation, title, table of contents, web client, wording (sun 11 oct): 3.5h
+
+total: 20h
