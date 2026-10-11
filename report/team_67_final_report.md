@@ -240,11 +240,11 @@ The container view opens up the Firefly box from the context view (Figure 1). Fi
 - **Message broker.** NATS JetStream carries everything between the tablets and the server. Tablets publish their events on the `operation-events` stream, one subject per report (`events.operation.<reportId>`), and the server publishes merged reports on a second stream, under `report.<hexagon>.<reportId>`. JetStream keeps messages until they are read and ignores a message whose id it has already seen. That id is the event's dot, which means a tablet can resend after a sync was cut off without creating duplicates. Tablets reach it over cellular.
 - **ICP server.** A Spring Boot service on the machine at the Incident Command Post. It merges incoming events, works out which hexagon each report is in, assigns hexagons to tablets, and enrols new tablets.
 - **Server store.** PostgreSQL, with the same logical schema as the tablet store: every event, plus the reports and incidents derived from them.
-- **Command web client.** A browser app for command staff at the ICP, showing the whole incident instead of a few hexagons. It reads the same report stream as the tablets, subscribed to every hexagon (`report.>`), through NATS over WebSocket since a browser cannot open a plain NATS connection.
+- **Command web client.** A browser app for command staff at the ICP. It shows the whole incident instead of a few hexagons. It reads the same report stream as the tablets, subscribed to every hexagon (`report.>`), through NATS over WebSocket since a browser cannot open a plain NATS connection.
 
-The merge code lives in a shared library, `core`, used by both the tablet app and the server. It is not a container on its own, but it is why both sides end up with the same record: they run the same code on the same events (R3).
+The merge code lives in a shared library, `core`, used by both the tablet app and the server. It runs inside both containers, and it is why both sides end up with the same record: they run the same code on the same events (R3).
 
-Everything between a tablet and the server goes through the broker instead of straight to the server, and a tablet can hand off its events while the server is busy. The link between two tablets does not touch the ICP at all, P2P mode only needs both crew leaders to switch it on (R5).
+Everything between a tablet and the server goes through the broker, so a tablet can hand off its events even while the server is busy. The link between two tablets does not touch the ICP at all, P2P mode only needs both crew leaders to switch it on (R5).
 
 <figure>
   <img title="" src="../report/figures/c4-container.png" alt="C4 container diagram">
@@ -253,7 +253,7 @@ Everything between a tablet and the server goes through the broker instead of st
 
 ### 3.5 Component View
 
-Only two containers have logic of their own, the tablet app and the ICP server, so those are the ones we open up.
+Most of the logic sits in the tablet app and the ICP server, so those are the two we open up.
 
 **Tablet app** (Figure 8). The screens only talk to `ReportService`, the one way to change a report. It turns every change into an event, stamps it with the tablet's next dot and its causal context, and stores it together with the derived report in one transaction. A crash cannot leave the two out of step. The local store holds the events, the replica state (the tablet's id, next sequence number and causal context), and the derived reports. The sync client sends the events the broker has not acknowledged yet, and reads the reports for the tablet's hexagons. `P2pManager` finds the other tablet over Nearby Connections. Both hand what they receive to `ReportService`, which merges it with the merge library. An event from the server and one from another tablet take the same path.
 
@@ -301,7 +301,7 @@ We follow the scenarios from Section 2.5. The offline one is split in two, since
   <figcaption><em>Figure 12: Two crews meeting in P2P mode.</em></figcaption>
 </figure>
 
-**Getting the reports for a zone** (Figure 13). A tablet publishes its position on `position.<deviceId>`. The zone service takes the hexagons within its radius, larger for division leaders, plus any hexagons the server assigned it, and the server publishes the list on `assign.<deviceId>`. The tablet then requests `report.<hexagon>.*` for each hexagon, which returns the latest version of every report in it, and keeps reading those subjects for new ones. Since the server picks the hexagons, an assignment can change what a tablet sees without the tablet moving.
+**Getting the reports for a zone** (Figure 13). A tablet publishes its position on `position.<deviceId>`. The zone service takes the hexagons within its radius, larger for division leaders, plus any hexagons assigned to it, and the report publisher sends the list on `assign.<deviceId>`. The tablet then requests `report.<hexagon>.*` for each hexagon, which returns the latest version of every report in it, and keeps reading those subjects for new ones. Since the server picks the hexagons, an assignment can change what a tablet sees without the tablet moving.
 
 <figure>
   <img title="" src="../report/figures/runtime-zones.png" alt="zone update sequence diagram">
@@ -310,7 +310,7 @@ We follow the scenarios from Section 2.5. The offline one is split in two, since
 
 ### 3.8 Deployment View
 
-Firefly does not run in the cloud (Section 2.2). The server side runs on one physical machine at the Incident Command Post: the broker, the ICP server and PostgreSQL, started together with Docker Compose. Command staff open the web client in a browser on a computer at the post, over the local network. Tablets reach it over cellular when they have coverage and keep working offline when they do not. Two tablets in P2P mode talk directly over Bluetooth or WiFi and never go through the ICP.
+Firefly does not run in the cloud (Section 2.2). The server side runs on one physical machine at the Incident Command Post: the broker, the ICP server and PostgreSQL, started together with Docker Compose. Tablets reach that machine over cellular when they have coverage and keep working offline when they do not. Command staff open the web client in a browser on a computer at the post, over the local network. Two tablets in P2P mode talk directly over Bluetooth or WiFi and never go through the ICP.
 
 Tablets need Android 14 or newer, since the tablet store uses SQLite's STRICT tables, which Android only ships from version 14.
 
