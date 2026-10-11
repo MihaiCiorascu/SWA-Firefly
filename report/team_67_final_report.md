@@ -234,12 +234,13 @@ Concurrent resolutions of the same Tier B conflict become a new conflict under t
 
 ### 3.4 Container View
 
-The container view opens up the Firefly box from the context view (Figure 1). Firefly runs as four parts, plus the merge code they share.
+The container view opens up the Firefly box from the context view (Figure 1). Firefly runs as five parts, plus the merge code they share.
 
 - **Tablet app.** One per crew, held by the crew leader. It is a native Android app (Kotlin, Jetpack Compose), because it has to work for a whole shift with no connection and needs Bluetooth and WiFi for P2P mode. It keeps a full copy of the record in a local SQLite store and never needs the server to stay useful (R1).
 - **Message broker.** NATS JetStream carries everything between the tablets and the server. Tablets publish their events on the `operation-events` stream, one subject per report (`events.operation.<reportId>`), and the server publishes merged reports on a second stream, under `report.<hexagon>.<reportId>`. JetStream keeps messages until they are read and ignores a message whose id it has already seen. That id is the event's dot, which means a tablet can resend after a sync was cut off without creating duplicates. Tablets reach it over cellular.
 - **ICP server.** A Spring Boot service on the machine at the Incident Command Post. It merges incoming events, works out which hexagon each report is in, assigns hexagons to tablets, and enrols new tablets.
 - **Server store.** PostgreSQL, with the same logical schema as the tablet store: every event, plus the reports and incidents derived from them.
+- **Command web client.** A browser app for command staff at the ICP, showing the whole incident instead of a few hexagons. It reads the same report stream as the tablets, subscribed to every hexagon (`report.>`), through NATS over WebSocket since a browser cannot open a plain NATS connection.
 
 The merge code lives in a shared library, `core`, used by both the tablet app and the server. It is not a container on its own, but it is why both sides end up with the same record: they run the same code on the same events (R3).
 
@@ -268,7 +269,7 @@ Only two containers have logic of their own, the tablet app and the ICP server, 
   <figcaption><em>Figure 9: Components of the ICP server.</em></figcaption>
 </figure>
 
-Not all of this is built yet. The proof of concept has the screens, `ReportService`, the local store and `P2pManager` on the tablet, a sync client that sends single severity changes, and the event consumer with a `MergeService` that only logs on the server. The zone service, report publisher and the report stream are still to do, and so is enrolment, the tablet generates its own id for now.
+Not all of this is built yet. The proof of concept has the screens, `ReportService`, the local store and `P2pManager` on the tablet, a sync client that sends single severity changes, and the event consumer with a `MergeService` that only logs on the server. The zone service, report publisher and the report stream are still to do, and so is enrolment, the tablet generates its own id for now. The command web client is not built either.
 
 
 ### 3.6 Code View
@@ -309,7 +310,7 @@ We follow the scenarios from Section 2.5. The offline one is split in two, since
 
 ### 3.8 Deployment View
 
-Firefly does not run in the cloud (Section 2.2). The server side runs on one physical machine at the Incident Command Post: the broker, the ICP server and PostgreSQL, started together with Docker Compose. Tablets reach it over cellular when they have coverage and keep working offline when they do not. Two tablets in P2P mode talk directly over Bluetooth or WiFi and never go through the ICP.
+Firefly does not run in the cloud (Section 2.2). The server side runs on one physical machine at the Incident Command Post: the broker, the ICP server and PostgreSQL, started together with Docker Compose. Command staff open the web client in a browser on a computer at the post, over the local network. Tablets reach it over cellular when they have coverage and keep working offline when they do not. Two tablets in P2P mode talk directly over Bluetooth or WiFi and never go through the ICP.
 
 Tablets need Android 14 or newer, since the tablet store uses SQLite's STRICT tables, which Android only ships from version 14.
 
