@@ -1,6 +1,6 @@
 <div align="center">
 
-### CS4505 Software Architecture Finch Report
+### CS4505 Software Architecture Heron Report
 # Firefly
 
 **Group 67**
