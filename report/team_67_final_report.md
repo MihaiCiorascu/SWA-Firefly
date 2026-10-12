@@ -1,6 +1,6 @@
 <div align="center">
 
-### CS4505 Software Architecture Finch Report
+### CS4505 Software Architecture Heron Report
 # Firefly
 
 **Group 67**
@@ -19,7 +19,29 @@ Radu Zidaru
 
 ## Table of Contents
 
-TODO
+- [1. Introduction](#1-introduction)
+- [2. Problem and Context Analysis](#2-problem-and-context-analysis)
+  - [2.1 Problem Description](#21-problem-description)
+  - [2.2 Context View](#22-context-view)
+  - [2.3 Stakeholders](#23-stakeholders)
+  - [2.4 Wardley Map](#24-wardley-map)
+  - [2.5 Example Scenarios](#25-example-scenarios)
+  - [2.6 Architecturally Significant Requirements](#26-architecturally-significant-requirements)
+  - [2.7 Quality Attributes](#27-quality-attributes)
+  - [2.8 Roadmap and Pricing](#28-roadmap-and-pricing)
+  - [2.9 Ethical and Legal Considerations](#29-ethical-and-legal-considerations)
+- [3. Architecture](#3-architecture)
+  - [3.1 Components](#31-components)
+  - [3.2 Event-Based Domain Model](#32-event-based-domain-model)
+  - [3.3 Elaborating Field Reporting](#33-elaborating-field-reporting)
+  - [3.4 Container View](#34-container-view)
+  - [3.5 Component View](#35-component-view)
+  - [3.6 Code View](#36-code-view)
+  - [3.7 Runtime Views](#37-runtime-views)
+  - [3.8 Deployment View](#38-deployment-view)
+  - [3.9 Architectural Decisions](#39-architectural-decisions)
+  - [3.10 How This Connects to Chapter 2](#310-how-this-connects-to-chapter-2)
+- [References](#references)
 
 ## 1. Introduction
 
@@ -201,7 +223,7 @@ Field Reporting carries our hardest problem: correctly merging concurrent offlin
 
 **Ubiquitous language.** We built our own team terminology for the domain concepts [<a href="#7">7</a>]. An **Incident** is one wildfire response effort. A **Report** is one reportable thing inside an incident. An **Event** is one immutable write to one field, by one device. A **dot** pairs a device id with that device's own local sequence number, and the **causal context** stores what a device already has seen, as a map from device id to counter, together they form the Dotted Version Vector (DVV) our merge relies on. A **Tier A field** merges by itself, automatic, no person needed. A **Tier B field** has no safe automatic merge and stays for a crew leader to resolve. A **conflict** happens when two events touch the same Tier B field and neither device knew about the other.
 
-**Tactical DDD.** The entity **Incident** has an immutable `incidentId`. Its `name` is Tier A with a fixed tiebreak rule. Its `status` is Tier B, since a status change is a judgement call, not something automatic. The entity **Report** has immutable `reportId` and `incidentId`. Its `reportType` is Tier A, merged by set union. Its `severity` is Tier A too, merged by taking the maximum. Its `location` and `description` stay Tier B for manual resolution. **Event** is its own category, with `eventId`, `operation` (`CREATE`, `SET_FIELD`, or `RESOLVE_CONFLICT`), `field`, `value`, `dot`, `causalContext`, and an informational `supersedes` field. **Dot** and **causalContext** are value objects, together the DVV. **MergeService** applies the Tier A/B policy. Every Tier A policy is deterministic, commutative, associative, and idempotent, the CRDT convergence properties, so every device converges regardless of arrival order. The Incident, Report, and Event repositories map directly onto the Room DAOs already built. We use no Factory, an Incident or Report is simply created by its first `CREATE` event.
+**Tactical DDD.** The entity **Incident** has an immutable `incidentId`. Its `name` is Tier A with a fixed tiebreak rule. Its `status` is Tier B, since a status change is a judgement call, not something automatic. The entity **Report** has immutable `reportId` and `incidentId`. Its `reportType` is Tier A, merged by set union. Its `severity` is Tier A too, merged by taking the maximum. Its `location` and `description` stay Tier B for manual resolution. **Event** is its own category, with `eventId`, `operation` (`CREATE`, `SET_FIELD`, or `RESOLVE_CONFLICT`), `field`, `value`, `dot`, `causalContext`, and an informational `supersedes` field. **Dot** and **causalContext** are value objects, together the DVV. **MergeService** applies the Tier A/B policy. Every Tier A policy is deterministic, commutative, associative, and idempotent, the CRDT convergence properties, so every device converges regardless of arrival order. On the tablet, the Report and Event repositories are SQLite repositories over the shared schema (`ReportRepository`, `EventRepository`), the Incident one is not built yet. We use no Factory, an Incident or Report is simply created by its first `CREATE` event.
 
 Concurrent resolutions of the same Tier B conflict become a new conflict under the same mechanism, no special case needed.
 
@@ -210,13 +232,102 @@ Concurrent resolutions of the same Tier B conflict become a new conflict under t
   <figcaption><em>Figure 6: Field Reporting's entities, Event record, and MergeService.</em></figcaption>
 </figure>
 
-### 3.4 Architectural Decisions
+### 3.4 Container View
+
+The container view opens up the Firefly box from the context view (Figure 1). Firefly runs as five parts, plus the merge code they share.
+
+- **Tablet app.** One per crew, held by the crew leader. It is a native Android app (Kotlin, Jetpack Compose), because it has to work for a whole shift with no connection and needs Bluetooth and WiFi for P2P mode. It keeps a full copy of the record in a local SQLite store and never needs the server to stay useful (R1).
+- **Message broker.** NATS JetStream carries everything between the tablets and the server. Tablets publish their events on the `operation-events` stream, one subject per report (`events.operation.<reportId>`), and the server publishes merged reports on a second stream, under `report.<hexagon>.<reportId>`. JetStream keeps messages until they are read and ignores a message whose id it has already seen. That id is the event's dot, which means a tablet can resend after a sync was cut off without creating duplicates. Tablets reach it over cellular.
+- **ICP server.** A Spring Boot service on the machine at the Incident Command Post. It merges incoming events, works out which hexagon each report is in, assigns hexagons to tablets, and enrols new tablets.
+- **Server store.** PostgreSQL, with the same logical schema as the tablet store: every event, plus the reports and incidents derived from them.
+- **Command web client.** A browser app for command staff at the ICP. It shows the whole incident instead of a few hexagons. It reads the same report stream as the tablets, subscribed to every hexagon (`report.>`), through NATS over WebSocket since a browser cannot open a plain NATS connection.
+
+The merge code lives in a shared library, `core`, used by both the tablet app and the server. It runs inside both containers, and it is why both sides end up with the same record: they run the same code on the same events (R3).
+
+Everything between a tablet and the server goes through the broker, so a tablet can hand off its events even while the server is busy. The link between two tablets does not touch the ICP at all, P2P mode only needs both crew leaders to switch it on (R5).
+
+<figure>
+  <img title="" src="../report/figures/c4-container.png" alt="C4 container diagram">
+  <figcaption><em>Figure 7: C4 container view.</em></figcaption>
+</figure>
+
+### 3.5 Component View
+
+Most of the logic sits in the tablet app and the ICP server, so those are the two we open up.
+
+**Tablet app** (Figure 8). The screens only talk to `ReportService`, the one way to change a report. It turns every change into an event, stamps it with the tablet's next dot and its causal context, and stores it together with the derived report in one transaction. A crash cannot leave the two out of step. The local store holds the events, the replica state (the tablet's id, next sequence number and causal context), and the derived reports. The sync client sends the events the broker has not acknowledged yet, and reads the reports for the tablet's hexagons. `P2pManager` finds the other tablet over Nearby Connections. Both hand what they receive to `ReportService`, which merges it with the merge library. An event from the server and one from another tablet take the same path.
+
+<figure>
+  <img title="" src="../report/figures/c4-component-tablet.png" alt="tablet app component diagram">
+  <figcaption><em>Figure 8: Components of the tablet app.</em></figcaption>
+</figure>
+
+**ICP server** (Figure 9). The event consumer reads the `operation-events` stream. `MergeService` applies each event with the same merge library and stores it through the event repository. The zone service does the H3 work: the hexagon of every report and, from a tablet's position, the hexagons that tablet gets. The report publisher puts merged reports and hexagon assignments back on the broker. Enrolment, left out of the figure, gives each tablet its id when it is set up at the ICP, the id every dot carries.
+
+<figure>
+  <img title="" src="../report/figures/c4-component-server.png" alt="ICP server component diagram">
+  <figcaption><em>Figure 9: Components of the ICP server.</em></figcaption>
+</figure>
+
+Not all of this is built yet. The proof of concept has the screens, `ReportService`, the local store and `P2pManager` on the tablet, a sync client that sends single severity changes, and the event consumer with a `MergeService` that only logs on the server. The zone service, report publisher and the report stream are still to do, and so is enrolment, the tablet generates its own id for now. The command web client is not built either.
+
+
+### 3.6 Code View
+
+The C4 code level would zoom into single classes. We skip it apart from Field Reporting, whose classes Figure 6 already shows. The rest maps one to one onto the components above and is easier to read in the repository than in a diagram.
+
+### 3.7 Runtime Views
+
+We follow the scenarios from Section 2.5. The offline one is split in two, since logging and syncing happen at different times.
+
+**Logging without a connection** (Figure 10). Alice's crew loses coverage and she marks a spot fire. `ReportService` stores it as events with her tablet's next dots, and nothing waits on a connection.
+
+<figure>
+  <img title="" src="../report/figures/runtime-offline.png" alt="logging offline sequence diagram">
+  <figcaption><em>Figure 10: Logging without a connection.</em></figcaption>
+</figure>
+
+**Back into coverage** (Figure 11). When cellular coverage returns, the sync client sends every unsent event on `events.operation.<reportId>`, with its dot as message id, and marks it sent once the broker acknowledges it. If the connection drops halfway, the next attempt sends the rest again and the broker drops what it already has. The server merges each event, stores it, and publishes the merged report under its hexagon, where every tablet reading that hexagon picks it up.
+
+<figure>
+  <img title="" src="../report/figures/runtime-reconnect.png" alt="back into coverage sequence diagram">
+  <figcaption><em>Figure 11: Back into coverage.</em></figcaption>
+</figure>
+
+**Two crews meeting** (Figure 12). Alice and Bob both switch on P2P mode and their tablets connect over Nearby Connections. Each sends the events the other has not seen, which it can tell from the other's causal context, and both merge. Tier A fields like severity settle on their own. A Tier B field changed on both tablets keeps both values, shown with who made each and when. Once Alice and Bob agree, the choice goes out as a `RESOLVE_CONFLICT` event, which merges like any other.
+
+<figure>
+  <img title="" src="../report/figures/runtime-p2p.png" alt="P2P meeting sequence diagram">
+  <figcaption><em>Figure 12: Two crews meeting in P2P mode.</em></figcaption>
+</figure>
+
+**Getting the reports for a zone** (Figure 13). A tablet publishes its position on `position.<deviceId>`. The zone service takes the hexagons within its radius, larger for division leaders, plus any hexagons assigned to it, and the report publisher sends the list on `assign.<deviceId>`. The tablet then requests `report.<hexagon>.*` for each hexagon, which returns the latest version of every report in it, and keeps reading those subjects for new ones. Since the server picks the hexagons, an assignment can change what a tablet sees without the tablet moving.
+
+<figure>
+  <img title="" src="../report/figures/runtime-zones.png" alt="zone update sequence diagram">
+  <figcaption><em>Figure 13: Getting the reports for a zone.</em></figcaption>
+</figure>
+
+### 3.8 Deployment View
+
+Firefly does not run in the cloud (Section 2.2). The server side runs on one physical machine at the Incident Command Post: the broker, the ICP server and PostgreSQL, started together with Docker Compose. Tablets reach that machine over cellular when they have coverage and keep working offline when they do not. Command staff open the web client in a browser on a computer at the post, over the local network. Two tablets in P2P mode talk directly over Bluetooth or WiFi and never go through the ICP.
+
+Tablets need Android 14 or newer, since the tablet store uses SQLite's STRICT tables, which Android only ships from version 14.
+
+If the machine at the ICP goes down, only the server path stops. Tablets keep working and keep syncing with each other, and they catch up with the server once it is back, since every tablet still holds all of its events.
+
+<figure>
+  <img title="" src="../report/figures/c4-deployment.png" alt="C4 deployment diagram">
+  <figcaption><em>Figure 14: C4 deployment view.</em></figcaption>
+</figure>
+
+### 3.9 Architectural Decisions
 
 **We chose a two-tier merge policy instead of one single policy.** An always-automatic policy can silently pick a value nobody chose, hiding a real disagreement. An always-manual policy makes a leader step in on every sync, even for a safe field like severity. Splitting fields by tier gives us both: nothing gets dropped, and only fields where a wrong automatic choice matters need a person.
 
 **Sync has two directions, and both go through NATS.** A tablet sends its events to NATS when it gets a connection. The server reads them, merges them, and saves the result (Section 4.1). The server then sends each merged report back through NATS. A tablet receives only the reports for its own hexagon and the ones around it (Section 4.2).
 
-### 3.5 How This Connects to Chapter 2
+### 3.10 How This Connects to Chapter 2
 
 Our bounded contexts match the stakeholders from Section 2.3. Field Reporting serves the crews (Offline, Meeting, and Reconnect scenarios). Zone Subscription serves division leaders and command staff (Connected scenario, R6). Table 3.2 models the same four scenarios from Section 2.5 as a domain, not as narrated steps. The Tier A/B split is exactly what R4 needs at the data level, no report is lost, which is the "how" R4 itself points here for.
 

@@ -44,10 +44,9 @@ Attended a meeting with the team where we discussed how events should be ordered
 
 Total: 15h
 
-
 ### Week 4
 
-This week I looked over the lecture slides and met with the team on Friday to discuss what we will do following our finch release. We talked about what should we do for the heron release, in terms of PoC and report. I also did some of my own research into how this system should be fault tolerant and scalable when deployed. We prepared and scheduled the presentation, which was pretty difficult since our schedules didn't really align with the other teams'. I also thought about how to write a testing harness and suite for the merge library.
+This week I looked over the lecture slides and met with the team on Friday to discuss what we will do following our Finch release. We talked about what should we do for the Heron release, in terms of PoC and report. I also did some of my own research into how this system should be fault tolerant and scalable when deployed. We prepared and scheduled the presentation, which was pretty difficult since our schedules didn't really align with the other teams'. I also thought about how to write a testing harness and suite for the merge library.
 
 * Lecture slides (2h)
 * Meeting Friday (2h)
@@ -56,3 +55,12 @@ This week I looked over the lecture slides and met with the team on Friday to di
 * Testing for merge library (1h)
 
 Total: 9h
+
+### Week 5
+
+Most important thing I did this week was to rewrite the merge library to support all types of fields we decided on in the report. I also wrote tests that verify that the implementation satisfies the requirements we picked. I also started writing an ADR about our approach to security. I studied the material in the report and organized some meeting minutes and presentations for the team.
+
+* Merge library re-write with tests (6h)
+* ADR draft (2h)
+* Lecture & slides (2h)
+* Misc tasks (1h)
