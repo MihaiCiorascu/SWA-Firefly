@@ -1,16 +1,16 @@
 # Firefly proof of concept
 
-Firefly lets crews record incident reports on a tablet without a connection and merge them when tablets meet or come back into coverage (see the report). This proof of concept shows the three things the architecture depends on: a tablet that keeps working offline, a tablet that sends its events to a server through a message broker, and two tablets that find each other and exchange events directly.
+Firefly lets crews write incident reports on a tablet without a connection. The reports merge when tablets meet or come back into coverage (see the report). This proof of concept shows three things the architecture needs. A tablet works offline. A tablet sends its events to a server through a message broker. Two tablets find each other and exchange events directly.
 
 ## What works and what does not yet
 
 | Part | Status |
 |---|---|
-| Tablet app (`device`) | The Reports tab saves report changes as events in a local SQLite store. The Server tab sends one severity change to NATS. The P2P tab connects two devices over Nearby Connections and sends a severity change from one to the other. |
-| ICP server (`server`) | Reads the `operation-events` stream from NATS. The merge service only logs each event so far. The Postgres schema exists. |
-| Shared library (`core`) | Ids, events, the causal context, the field policies, and the first severity merge. Used by the server and the tablet app. |
+| Tablet app (`device`) | The Reports tab saves report changes as events in a local SQLite store. The Server tab sends one severity change to NATS. The P2P tab connects two devices over Nearby Connections. One device sends a severity change to the other. |
+| ICP server (`server`) | Reads the `operation-events` stream from NATS. The merge service only logs each event so far. The Postgres schema is ready. |
+| Shared library (`core`) | Ids, events, the causal context, the field policies and the first severity merge. The server and the tablet app both use it. |
 
-Not built yet: zone subscription, the report publisher, tablet enrolment, the command web client, and merging what arrives over P2P.
+Not built yet: zone subscription, the report publisher, tablet enrolment, the command web client and merging what arrives over P2P.
 
 ## Layout
 
@@ -60,7 +60,7 @@ adb install -r device/build/outputs/apk/debug/device-debug.apk
 
 You can also open this folder in Android Studio and run `device`. The app has three tabs.
 
-- **Reports**: create a report and set its severity. The change is saved as an event in the local database.
+- **Reports**: create a report and set its severity. The app saves the change as an event in the local database.
 - **Server**: send a severity change to NATS. On an emulator the address is `nats://10.0.2.2:4222`. On a phone on the same network use `nats://<address of your computer>:4222`. The server log then shows that it received the operation.
 - **P2P**: see the next section.
 
@@ -75,8 +75,8 @@ You can also open this folder in Android Studio and run `device`. The app has th
 What we have seen so far:
 
 - A Galaxy S25 Ultra and a Galaxy Tab S8+ connect and send a severity change to each other.
-- A Galaxy S25 Ultra and a Galaxy S24 did not connect when they were not close to each other.
-- A Galaxy S24 and a Galaxy S25 Ultra, connected in clear line of sight, kept exchanging severity changes while the S24 walked away, until about 50 to 60 metres (an estimate, not a measurement).
+- A Galaxy S25 Ultra and a Galaxy S24 did not connect when they were far apart.
+- Once connected in clear line of sight, the S24 and the S25 Ultra kept exchanging severity changes while the S24 walked away. This went on until about 50 to 60 metres. This is an estimate, not a measurement.
 - Two emulators connect and exchange operations in both directions. A real phone and an emulator do not find each other, because the emulator radios are virtual.
 
 ## Tests

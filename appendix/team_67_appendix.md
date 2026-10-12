@@ -55,7 +55,7 @@ The scenarios in Section 2.4 cover the requirements that shape the architecture.
 
 ## B.2 Experiment 2: How much data does a sync send?
 
-**Logs.** Each pair of logs has n events per tablet. A share o of all distinct events is held by both tablets. Both tablets hold the same first part of each author's events. The rest of an author's events is held by one tablet only. The two tablets take turns from author to author. So each tablet has about n events and has news for the other tablet. The events of an author are held without gaps, from number 1. This lets one counter per author show what a tablet has seen.
+**Logs.** Each pair of logs has n events per tablet. A share o of all distinct events is held by both tablets. For each author, both tablets hold the same first events. The other events of that author are held by one tablet only, and the two tablets take turns from author to author. So each tablet has about n events and has news for the other tablet. The events of an author have no gaps and start at number 1. This lets one counter per author show what a tablet has seen.
 
 **Ways to sync.** In the whole-log way, each tablet sends all its events in one message. The receiver ignores the events it already has. In the causal-context way, each tablet first sends its causal context. Then it sends only the events the other side does not have. This takes two rounds.
 
