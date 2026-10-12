@@ -86,3 +86,48 @@ P2P implementation (Sat): 5h
 Presentation prep (Sat): 2h
 
 total: 13h
+
+W5 (28 sep - 4 oct)
+
+What happened this week:
+
+Went to both lectures. On Tuesday we gave the peer review presentation (~1h). On Thursday we had an online meeting with our TA (~45 min) about our progress and the report.
+
+The rest of the week I worked on P2P. One device can now send a severity change and the other one receives it. I fixed a few problems (location permission, an error message, a device connecting to itself) and wrote a short guide to test it on 2 devices. Then I put my branch together with my teammates' work on the database and the messaging.
+
+### Hours
+
+Lectures (Tue, Thu): 4h
+Peer review presentation (Tue): 1h
+TA meeting (Thu): 0.75h
+P2P severity changes and fixes: 6h
+Test guide and putting the branches together: 3h
+
+total: 14.75h
+
+W6 (5 - 12 oct)
+
+What happened this week:
+
+Went to one lecture.
+
+### Monday 5 oct
+My P2P branch was merged into master. I tested it on 2 emulators and they exchange operations in both directions. A phone and an emulator do not find each other, so we still need a test on 2 real devices.
+
+### Friday 9 oct
+Team meeting (1.5h) and TA meeting in person (30 min). The TA wants experiments linked to our quality attributes, READMEs and all report changes on master. The ADRs do not count for the word limit. After that I started planning the CA3 experiments and the PoC README.
+
+### Monday 12 oct
+Met with Alex (4h) to work on the experiments, fix problems and improve the report. We did a first walking test of the P2P range with the S24 and the S25 Ultra. I walked away in a straight line while sending severity changes until Alex stopped receiving them. That was at 50-60m.
+
+### Hours
+
+Lecture: 2h
+P2P testing on emulators (Mon 5): 2h
+Merge requests (Mon 5): 1h
+Team meeting (Fri 9): 1.5h
+TA meeting (Fri 9): 0.5h
+CA3 plan and PoC README (Fri 9): 3h
+Meeting with Alex: experiments, walking test and report (Mon 12): 4h
+
+total: 14h
