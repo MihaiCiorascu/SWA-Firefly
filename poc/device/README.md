@@ -27,4 +27,4 @@ Unit tests: `./gradlew :device:testDebugUnitTest`, the db ones run on Robolectri
 
 - Two emulators (`Tel1`, `Tel2`): connect and exchange operations in both directions.
 - A real phone and an emulator do not discover each other, the emulator radios are virtual.
-- Two real devices: not tested yet.
+- Two real devices: a Galaxy S26 and a Galaxy Tab S8+ connect and send a severity change. A Galaxy S26 and a Galaxy S24 did not connect when they were not close to each other.
