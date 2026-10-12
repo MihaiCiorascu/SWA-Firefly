@@ -423,13 +423,13 @@ We use Nearby Connections for P2P between tablets [<a href="#18">18</a>]. We cho
 
 We did a walking test with a Galaxy S25 Ultra and a Galaxy S24 in clear line of sight. The S24 sent severity changes all the time while its owner walked away in a straight line. The changes kept arriving until the phones were ~50-60m apart. This is only our estimate, because we did not measure it. Next we repeat the walk with marked distances.
 
-We keep Nearby Connections if the changes arrive at 10m, because crews meet face to face. If not, we test Wi-Fi Direct.
+We keep Nearby Connections if the changes arrive at 10m, because crews meet face to face. If not, we test Wi-Fi Direct. The whole logs we sent in Experiment 2 also arrived complete at ~10m and ~20m.
 
 ### 5.2 Experiment 2: How much data does a sync send?
 
 Section 3.3 explains the causal context. In the sync in Section 3.7 a tablet sends only the events the other tablet does not have. We call this the causal-context way. The simple way is to send the whole log. The causal-context way sends less, but it needs one more message and more code. The question is whether it is worth it. This matters for R3 and for the scalability target in Section 2.7.
 
-We send a whole log of 10,000 events from a Galaxy S24 to a Galaxy S25 Ultra over P2P and time it. We did this three times. The S25 Ultra stored all 10,000 events each time in ~0.8-1.2 s, with nothing lost and no duplicates. We also sync pairs of generated logs and count the bytes. In a first run, the causal-context way sent ~66% fewer bytes at 50% shared and more than 99% fewer at 99% shared.
+We send a whole log of 10,000 events from a Galaxy S24 to a Galaxy S25 Ultra over P2P and time it. We did this three times, at ~1m, ~10m and ~20m. The S25 Ultra stored all 10,000 events each time in ~0.8-1.2 s, with nothing lost and no duplicates. We also sync pairs of generated logs and count the bytes. In a first run, the causal-context way sent ~66% fewer bytes at 50% shared and more than 99% fewer at 99% shared.
 
 We keep the causal-context way if sending the whole log takes more than one minute. It took ~1 s, so on this link the simple way is enough. We still have to test a weak link at the edge of the range.
 

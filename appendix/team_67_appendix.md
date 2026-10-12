@@ -55,7 +55,7 @@ The scenarios in Section 2.4 cover the requirements that shape the architecture.
 
 ## B.2 Experiment 2: How much data does a sync send?
 
-**Real devices.** A Galaxy S24 sends a whole log to a Galaxy S25 Ultra over Nearby Connections. The Experiment tab of the app does this. The S24 sends generated events in payloads of 10 or 50 events. The S25 Ultra stores them in its SQLite database and logs the time from the first message until the last event is stored. We ran 10,000 events (50 per payload) and 1,000 events (10 per payload) three times each. We did not write down the distance between the devices. Table B.2 has every run. In all six runs the S25 Ultra stored every event, with no loss and no duplicates. 10,000 events took ~0.8-1.2 s, far under the one minute of our rule.
+**Real devices.** A Galaxy S24 sends a whole log to a Galaxy S25 Ultra over Nearby Connections. The Experiment tab of the app does this. The S24 sends generated events in payloads of 10 or 50 events. The S25 Ultra stores them in its SQLite database and logs the time from the first message until the last event is stored. We ran 10,000 events (50 per payload) and 1,000 events (10 per payload) three times each, at ~1m, ~10m and ~20m. Table B.2 has every run. In all six runs the S25 Ultra stored every event, with no loss and no duplicates. 10,000 events took ~0.8-1.2 s, far under the one minute of our rule.
 
 **Logs.** Each pair of logs has n events per tablet. A share o of all distinct events is held by both tablets. For each author, both tablets hold the same first events. The other events of that author are held by one tablet only and the two tablets take turns from author to author. So each tablet has about n events and has news for the other tablet. The events of an author have no gaps and start at number 1. This lets one counter per author show what a tablet has seen.
 
@@ -76,13 +76,13 @@ The scenarios in Section 2.4 cover the requirements that shape the architecture.
 
 *Table B.1: Bytes sent for a sync with 10 authors and 10,000 events per tablet, both directions together, mean of ten seeds.*
 
-| Events | Per payload | Sender time (ms) | Receiver time (ms) | Stored | Lost | Duplicates |
-|---|---|---|---|---|---|---|
-| 10,000 | 50 | 383 | 849 | 10,000 | 0 | 0 |
-| 10,000 | 50 | 333 | 1,198 | 10,000 | 0 | 0 |
-| 10,000 | 50 | 350 | 1,161 | 10,000 | 0 | 0 |
-| 1,000 | 10 | 129 | 600 | 1,000 | 0 | 0 |
-| 1,000 | 10 | 202 | 602 | 1,000 | 0 | 0 |
-| 1,000 | 10 | 219 | 176 | 1,000 | 0 | 0 |
+| Distance | Events | Per payload | Sender time (ms) | Receiver time (ms) | Stored | Lost | Duplicates |
+|---|---|---|---|---|---|---|---|
+| ~1m | 10,000 | 50 | 383 | 849 | 10,000 | 0 | 0 |
+| ~10m | 10,000 | 50 | 333 | 1,198 | 10,000 | 0 | 0 |
+| ~20m | 10,000 | 50 | 350 | 1,161 | 10,000 | 0 | 0 |
+| ~1m | 1,000 | 10 | 129 | 600 | 1,000 | 0 | 0 |
+| ~10m | 1,000 | 10 | 202 | 602 | 1,000 | 0 | 0 |
+| ~20m | 1,000 | 10 | 219 | 176 | 1,000 | 0 | 0 |
 
 *Table B.2: Sending a whole log from a Galaxy S24 to a Galaxy S25 Ultra over P2P. The sender measures from its first payload until every payload is reported as sent. The receiver measures from the first message until the last event is stored.*
