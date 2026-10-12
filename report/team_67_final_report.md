@@ -415,31 +415,27 @@ Three aspects constrain the chosen solution. First of all, report provenance nee
 
 ## 5. Architectural Experiments
 
-Two of our decisions are based on what we expect, not on data. So we test each one with an experiment. The results will confirm a decision or change it. For Heron both experiments are designed and each has a first result. The measurements on the devices come before the Swan release. Appendix B has the details.
+Two of our decisions are based on what we expect, not on data. So we test each one with an experiment. The results will confirm a decision or change it. For Heron both experiments are designed and each has a first result. Appendix B has the details.
 
 ### 5.1 Experiment 1: How far does the P2P link reach?
 
-We use Nearby Connections for P2P between tablets. We chose it because it puts Bluetooth, BLE and Wi-Fi behind one interface [<a href="#18">18</a>]. We chose it from the documentation, not from data. This matters for R5, where two crews meet and sync. The question is how far apart two devices can be and still receive each other's changes.
+We use Nearby Connections for P2P between tablets [<a href="#18">18</a>]. We chose it from the documentation, not from data. This matters for R5, where two crews meet and sync. The question is how far apart two devices can be and still receive each other's changes.
 
-We test on real Samsung devices from the team. In our first tests two emulators found each other, but a phone and an emulator did not. A Galaxy S25 Ultra and a Galaxy Tab S8+ connected and sent a severity change. A Galaxy S25 Ultra and a Galaxy S24 did not connect when they were far apart.
+We did a walking test with a Galaxy S25 Ultra and a Galaxy S24 in clear line of sight. The S24 sent severity changes all the time while its owner walked away in a straight line. The changes kept arriving until the phones were ~50-60m apart. This is only our estimate, because we did not measure it. Next we repeat the walk with marked distances.
 
-Then we did a walking test. The S25 Ultra and the S24 were connected in clear line of sight. The S24 sent severity changes all the time while its owner walked away in a straight line. The changes kept arriving until the phones were ~50-60m apart. This is only our estimate, because we did not measure it. The last change the S25 Ultra received was number 352. Next we repeat the walk with marked distances and write down where the changes stop.
-
-We keep Nearby Connections if the changes arrive at 10m. We chose 10m because crews meet face to face. If they stop earlier, we test Wi-Fi Direct.
+We keep Nearby Connections if the changes arrive at 10m, because crews meet face to face. If not, we test Wi-Fi Direct.
 
 ### 5.2 Experiment 2: How much data does a sync send?
 
-Section 3.3 explains the causal context. In the sync in Section 3.7, a tablet sends only the events the other tablet does not have. We call this the causal-context way. The simple way is to send the whole log. The causal-context way sends less, but it needs one more message and more code. The question is whether it is worth it. This matters for R3 and for the scalability target in Section 2.7.
+Section 3.3 explains the causal context. In the sync in Section 3.7 a tablet sends only the events the other tablet does not have. We call this the causal-context way. The simple way is to send the whole log. The causal-context way sends less, but it needs one more message and more code. The question is whether it is worth it. This matters for R3 and for the scalability target in Section 2.7.
 
-We sync pairs of generated logs with 100 to 100,000 events per tablet. The tablets share between 0 and 99% of the events. We try both ways. We count the bytes sent and check that both tablets end with the same events. We still have to measure the time a tablet needs to store the events.
+We sync two generated logs that share between 0 and 99% of their events and count the bytes sent. In a first run, the causal-context way sent ~66% fewer bytes at 50% shared and more than 99% fewer at 99% shared. We still have to measure the time a tablet needs to store the events.
 
-A first run on a laptop, with 10,000 events per tablet, gave this. At 50% shared, the causal-context way sends ~66% fewer bytes. At 99% shared, it sends more than 99% fewer bytes. The whole log is ~2 MB.
-
-We keep the causal-context way if sending the whole log takes more than one minute. If not, we drop the extra message and keep the simple way.
+We keep the causal-context way if sending the whole log takes more than one minute. If not, we keep the simple way.
 
 ### 5.3 Limits and next steps
 
-The logs are generated, so they are tidier than real reports. We used only Samsung devices. The walk was in clear line of sight, which is the best case on a fireground. A good result tells us a decision is not wrong. It does not prove it is right. The measurements on the devices come between Heron and Swan. The results go into the Swan report.
+The logs are generated, so they are tidier than real reports. We used only Samsung devices. The walk was in clear line of sight, which is the best case on a fireground. A good result does not prove a decision is right. It only shows it is not wrong. The measurements on the devices come before the Swan release.
 
 ## References
 
