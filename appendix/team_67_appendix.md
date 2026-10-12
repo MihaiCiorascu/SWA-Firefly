@@ -48,6 +48,18 @@ The scenarios in Section 2.4 cover the requirements that shape the architecture.
 
 **Acceptance.** At least 19 of 20 runs at ten metres finish within one minute for 1,000 events, and no interrupted run loses or duplicates a stored event.
 
+**First walking test (12 October 2026).** A Galaxy S24 and a Galaxy S25 Ultra were connected over P2P from the start, in clear line of sight with nothing between them (Figure B.1). The S24 sent severity changes continuously while its owner walked away in a straight line, until the S25 Ultra received no more of them. We estimate that this happened at about 50 to 60 metres. The distance was not measured. In the last moment before the connection was lost (Figure B.2), the S25 Ultra still showed `Connected` on its P2P tab, and the last operation it had received from the S24 was number 352. So a link can stop delivering before the app notices, which is why the experiment follows every payload to its end and does not rely on the connection status. The measured walk will repeat this with marked distances.
+
+<figure>
+  <img title="" src="../report/figures/range-test-location.jpg" alt="path where the walking test took place" width="320">
+  <figcaption><em>Figure B.1: The path of the walking test, a straight line with clear line of sight.</em></figcaption>
+</figure>
+
+<figure>
+  <img title="" src="../report/figures/range-test-screenshot.jpg" alt="P2P tab of the S25 Ultra just before the connection was lost" width="260">
+  <figcaption><em>Figure B.2: The P2P tab of the S25 Ultra in the last moment before the connection was lost. It still shows Connected, and the last operation received from the S24 is number 352.</em></figcaption>
+</figure>
+
 ## B.2 Experiment 2: The cost of a sync as the event log grows
 
 **Logs.** For n events per tablet and an overlap o, the share of all distinct events held by both tablets, the union of the two logs holds about 2n / (1 + o) events, spread over the authors with random weights. Both tablets hold the same first part of every author's events. The rest of an author's events is held by one tablet only, alternating between the two tablets from author to author, so each tablet ends with about n events and has news for the other unless the overlap is 100 percent. An author's events are always held as an unbroken run from sequence number one, which is what lets one counter per author describe what a tablet has seen.

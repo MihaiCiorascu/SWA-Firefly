@@ -76,6 +76,7 @@ What we have seen so far:
 
 - A Galaxy S25 Ultra and a Galaxy Tab S8+ connect and send a severity change to each other.
 - A Galaxy S25 Ultra and a Galaxy S24 did not connect when they were not close to each other.
+- A Galaxy S24 and a Galaxy S25 Ultra, connected in clear line of sight, kept exchanging severity changes while the S24 walked away, until about 50 to 60 metres (an estimate, not a measurement).
 - Two emulators connect and exchange operations in both directions. A real phone and an emulator do not find each other, because the emulator radios are virtual.
 
 ## Tests
