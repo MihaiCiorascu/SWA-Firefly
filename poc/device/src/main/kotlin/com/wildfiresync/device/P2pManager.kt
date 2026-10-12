@@ -50,6 +50,18 @@ class P2pManager(private val context: Context, private val localName: String) {
     // The transport does not interpret them, whoever plugs in (merge, storage) decodes.
     var onPayload: ((peerName: String, bytes: ByteArray) -> Unit)? = null
 
+    // Lets the P2P experiment take its own payloads before they reach onPayload.
+    // Returns true when it consumed the payload.
+    var experimentHandler: ((peerName: String, bytes: ByteArray) -> Boolean)? = null
+
+    // Called when a payload we sent has ended: true for success, false for failure or cancellation.
+    var onTransferEnded: ((payloadId: Long, success: Boolean) -> Unit)? = null
+
+    // Milliseconds from start() until the first connection came up, null until then.
+    private val connectMillisState = mutableStateOf<Long?>(null)
+    val connectMillis: Long? get() = connectMillisState.value
+    private var startedAtNanos = 0L
+
     // True between start() and stop(), so a lost connection can restart the search.
     private var running = false
 
@@ -77,6 +89,9 @@ class P2pManager(private val context: Context, private val localName: String) {
         override fun onConnectionResult(endpointId: String, result: ConnectionResolution) {
             if (result.status.statusCode == ConnectionsStatusCodes.STATUS_OK) {
                 connectedEndpointIds.add(endpointId)
+                if (connectMillisState.value == null) {
+                    connectMillisState.value = (System.nanoTime() - startedAtNanos) / 1_000_000
+                }
                 val name = endpointNames[endpointId] ?: endpointId
                 if (!connectedPeers.contains(name)) {
                     connectedPeers.add(name)
@@ -121,13 +136,21 @@ class P2pManager(private val context: Context, private val localName: String) {
         override fun onPayloadReceived(endpointId: String, payload: Payload) {
             if (payload.type == Payload.Type.BYTES) {
                 val bytes = payload.asBytes() ?: return
-                onPayload?.invoke(endpointNames[endpointId] ?: endpointId, bytes)
+                val peer = endpointNames[endpointId] ?: endpointId
+                if (experimentHandler?.invoke(peer, bytes) == true) {
+                    return
+                }
+                onPayload?.invoke(peer, bytes)
             }
         }
 
         override fun onPayloadTransferUpdate(endpointId: String, update: PayloadTransferUpdate) {
-            // Nothing to do for one small text payload. A real file/event stream
-            // transfer would track update.bytesTransferred / update.totalBytes here.
+            when (update.status) {
+                PayloadTransferUpdate.Status.SUCCESS -> onTransferEnded?.invoke(update.payloadId, true)
+                PayloadTransferUpdate.Status.FAILURE,
+                PayloadTransferUpdate.Status.CANCELED -> onTransferEnded?.invoke(update.payloadId, false)
+                else -> Unit
+            }
         }
     }
 
@@ -152,6 +175,8 @@ class P2pManager(private val context: Context, private val localName: String) {
             return
         }
 
+        startedAtNanos = System.nanoTime()
+        connectMillisState.value = null
         running = true
         startSearching()
     }
@@ -199,5 +224,15 @@ class P2pManager(private val context: Context, private val localName: String) {
         }
         connectionsClient.sendPayload(connectedEndpointIds.toList(), Payload.fromBytes(bytes))
         return true
+    }
+
+    /** Like send, but returns the payload id so the caller can follow it in onTransferEnded. Null when nobody is connected. */
+    fun sendTracked(bytes: ByteArray): Long? {
+        if (connectedEndpointIds.isEmpty()) {
+            return null
+        }
+        val payload = Payload.fromBytes(bytes)
+        connectionsClient.sendPayload(connectedEndpointIds.toList(), payload)
+        return payload.id
     }
 }
