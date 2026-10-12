@@ -244,15 +244,15 @@ Concurrent resolutions of the same Tier B conflict become a new conflict under t
 
 The container view opens up the Firefly box from the context view (Figure 1). Firefly runs as five parts, plus the merge code they share.
 
-- **Tablet app.** One per crew, held by the crew leader. It is a native Android app (Kotlin, Jetpack Compose), because it has to work for a whole shift with no connection and needs Bluetooth and WiFi for P2P mode. It keeps a full copy of the record in a local SQLite store and never needs the server to stay useful (R1).
+- **Tablet app.** One per crew, held by the crew leader. It is a native Android app (Kotlin, Jetpack Compose) because Firefly is offline first and cannot depend on a web connection to run. For the same reason it keeps a full copy of the record in a local SQLite store and never needs the server to stay useful (R1).
 - **Message broker.** NATS JetStream carries everything between the tablets and the server. Tablets publish their events on the `operation-events` stream, one subject per report (`events.operation.<reportId>`), and the server publishes merged reports on a second stream, under `report.<hexagon>.<reportId>`. JetStream keeps messages until they are read and ignores a message whose id it has already seen. That id is the event's dot, which means a tablet can resend after a sync was cut off without creating duplicates. Tablets reach it over cellular.
-- **ICP server.** A Spring Boot service on the machine at the Incident Command Post. It merges incoming events, works out which hexagon each report is in, assigns hexagons to tablets, and enrols new tablets.
+- **ICP server.** A Spring Boot service on the machine at the Incident Command Post. It merges incoming events, works out which zone each report is in, and assigns each tablet its zones based on its GPS position. Zones are cells of H3, a grid that divides the map into hexagons [<a href="#19">19</a>].
 - **Server store.** PostgreSQL, with the same logical schema as the tablet store: every event, plus the reports and incidents derived from them.
-- **Command web client.** A browser app for command staff at the ICP. It shows the whole incident instead of a few hexagons. It reads the same report stream as the tablets, subscribed to every hexagon (`report.>`), through NATS over WebSocket since a browser cannot open a plain NATS connection.
+- **Command web client.** A browser app for command staff at the ICP. It gives them an overview of the entire incident, so they can coordinate the response across crews. It reads the same report stream as the tablets, subscribed to every hexagon (`report.>`), through NATS over WebSocket since a browser cannot open a plain NATS connection.
 
 The merge code lives in a shared library, `core`, used by both the tablet app and the server. It runs inside both containers, and it is why both sides end up with the same record: they run the same code on the same events (R3).
 
-Everything between a tablet and the server goes through the broker, so a tablet can hand off its events even while the server is busy. The link between two tablets does not touch the ICP at all, P2P mode only needs both crew leaders to switch it on (R5).
+Everything between a tablet and the server goes through the broker, so a tablet can hand off its events even while the server is busy. Two tablets in P2P mode connect to each other directly, once both crew leaders switch it on (R5).
 
 <figure>
   <img title="" src="../report/figures/c4-container.png" alt="C4 container diagram">
@@ -261,7 +261,7 @@ Everything between a tablet and the server goes through the broker, so a tablet 
 
 ### 3.5 Component View
 
-Most of the logic sits in the tablet app and the ICP server, so those are the two we open up.
+The component view covers the tablet app and the ICP server, which hold most of the logic.
 
 **Tablet app** (Figure 8). The screens only talk to `ReportService`, the one way to change a report. It turns every change into an event, stamps it with the tablet's next dot and its causal context, and stores it together with the derived report in one transaction. A crash cannot leave the two out of step. The local store holds the events, the replica state (the tablet's id, next sequence number and causal context), and the derived reports. The sync client sends the events the broker has not acknowledged yet, and reads the reports for the tablet's hexagons. `P2pManager` finds the other tablet over Nearby Connections. Both hand what they receive to `ReportService`, which merges it with the merge library. An event from the server and one from another tablet take the same path.
 
@@ -277,12 +277,10 @@ Most of the logic sits in the tablet app and the ICP server, so those are the tw
   <figcaption><em>Figure 9: Components of the ICP server.</em></figcaption>
 </figure>
 
-Not all of this is built yet. The proof of concept has the screens, `ReportService`, the local store and `P2pManager` on the tablet, a sync client that sends single severity changes, and the event consumer with a `MergeService` that only logs on the server. The zone service, report publisher and the report stream are still to do, and so is enrolment, the tablet generates its own id for now. The command web client is not built either.
-
 
 ### 3.6 Code View
 
-The C4 code level would zoom into single classes. We skip it apart from Field Reporting, whose classes Figure 6 already shows. The rest maps one to one onto the components above and is easier to read in the repository than in a diagram.
+Figure 6 already gives the class level for Field Reporting, the core of the system. The other components are thin enough that a class diagram would add nothing the component view does not show, and one can be generated from the code if needed.
 
 ### 3.7 Runtime Views
 
@@ -302,14 +300,14 @@ We follow the scenarios from Section 2.5. The offline one is split in two, since
   <figcaption><em>Figure 11: Back into coverage.</em></figcaption>
 </figure>
 
-**Two crews meeting** (Figure 12). Alice and Bob both switch on P2P mode and their tablets connect over Nearby Connections. Each sends the events the other has not seen, which it can tell from the other's causal context, and both merge. Tier A fields like severity settle on their own. A Tier B field changed on both tablets keeps both values, shown with who made each and when. Once Alice and Bob agree, the choice goes out as a `RESOLVE_CONFLICT` event, which merges like any other.
+**Two crews meeting** (Figure 12). Alice and Bob both switch on P2P mode and their tablets connect over Nearby Connections. Each sends the events the other has not seen, which it can tell from the other's causal context, and both merge. Conflicts are then resolved as described in Section 3.3.
 
 <figure>
   <img title="" src="../report/figures/runtime-p2p.png" alt="P2P meeting sequence diagram">
   <figcaption><em>Figure 12: Two crews meeting in P2P mode.</em></figcaption>
 </figure>
 
-**Getting the reports for a zone** (Figure 13). A tablet publishes its position on `position.<deviceId>`. The zone service takes the hexagons within its radius, larger for division leaders, plus any hexagons assigned to it, and the report publisher sends the list on `assign.<deviceId>`. The tablet then requests `report.<hexagon>.*` for each hexagon, which returns the latest version of every report in it, and keeps reading those subjects for new ones. Since the server picks the hexagons, an assignment can change what a tablet sees without the tablet moving.
+**Getting the reports for a zone** (Figure 13). A tablet publishes its position on `position.<deviceId>`. The zone service uses H3 to take the hexagons within its radius, larger for division leaders, plus any hexagons assigned to it, and the report publisher sends the list on `assign.<deviceId>`. The tablet then requests `report.<hexagon>.*` for each hexagon, which returns the latest version of every report in it, and keeps reading those subjects for new ones. Since the server picks the hexagons, an assignment can change what a tablet sees without the tablet moving.
 
 <figure>
   <img title="" src="../report/figures/runtime-zones.png" alt="zone update sequence diagram">
@@ -416,3 +414,5 @@ We used only Samsung devices. The walk was in clear line of sight, which is the 
 <a id="17">[17]</a> NATS, "Authenticating with an NKey." Docs.nats.io. https://docs.nats.io/running-a-nats-service/configuration/securing_nats/auth_intro/nkey_auth (accessed Oct. 11, 2026)
 
 <a id="18">[18]</a> Google, "Nearby Connections overview," Developers.google.com. https://developers.google.com/nearby/connections/overview (accessed Oct. 11, 2026)
+
+<a id="19">[19]</a> H3, "Introduction." H3geo.org. https://h3geo.org/docs/ (accessed Oct. 13, 2026)
