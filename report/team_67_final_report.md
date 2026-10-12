@@ -57,7 +57,7 @@ Climate change has made major natural disasters common. First responders often w
 
 We propose Firefly, an app that lets emergency personnel record and edit incident reports from the field. The system works offline: personnel can create and edit reports with no connection, and a backend merges conflicting edits once connectivity returns. Since more than one person can edit the same report while offline, we designed a conflict-resolution policy that avoids losing safety-critical information. We also added peer-to-peer sync between devices that are near each other, so personnel get the most complete picture even with low connectivity.
 
-Chapter 3 covers the architecture. Chapter 4 records two architectural decisions. Section 2.8 covers the roadmap.
+Chapter 3 covers the architecture. Chapter 4 records three architectural decisions. Chapter 5 designs two experiments. Section 2.8 covers the roadmap.
 
 ## 2. Problem and Context Analysis
 
@@ -421,7 +421,7 @@ Two architectural decisions rest on what we expect of the radio and of the data 
 
 The decision under test is the use of Nearby Connections as the peer-to-peer transport. We preferred it over raw Bluetooth and Wi-Fi Direct because it combines Bluetooth, BLE, and Wi-Fi behind one interface [<a href="#18">18</a>], but that reasoning comes from documentation and not from measurement. It matters for R1, R4, and R5, since two crews may stay together for only a few minutes, and a link that drops halfway must neither lose nor duplicate a report. The question is whether a sync finishes while the crews are still together, and whether an interrupted sync leaves both tablets with exactly the events they should hold.
 
-Two Samsung devices from the team run the proof-of-concept app, and only physical devices are used, because in our first tests two emulators found each other but a phone and an emulator did not. A first manual test connected a Galaxy S26 and a Galaxy Tab S8+ and sent a severity change between them, while a Galaxy S26 and a Galaxy S24 did not connect when they were not close to each other, so distance is one of the variables. One device sends 100, 1,000, and 10,000 generated events at one and ten metres, and some runs are interrupted halfway. We measure the time to connect, the time until the receiver has stored the last event, and the events lost and duplicated.
+Two Samsung devices from the team run the proof-of-concept app, and only physical devices are used, because in our first tests two emulators found each other but a phone and an emulator did not. A first manual test connected a Galaxy S25 Ultra and a Galaxy Tab S8+ and sent a severity change between them, while a Galaxy S25 Ultra and a Galaxy S24 did not connect when they were not close to each other, so distance is one of the variables. One device sends 100, 1,000, and 10,000 generated events at one and ten metres, and some runs are interrupted halfway. We measure the time to connect, the time until the receiver has stored the last event, and the events lost and duplicated.
 
 We keep Nearby Connections if at least 19 of 20 runs at ten metres finish within one minute for 1,000 events, a limit we chose because crews cannot be expected to stand together for longer, and if no interrupted run loses or duplicates an event. Otherwise we first add resending based on the dots and then test Wi-Fi Direct directly.
 

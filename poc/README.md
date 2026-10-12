@@ -74,8 +74,8 @@ You can also open this folder in Android Studio and run `device`. The app has th
 
 What we have seen so far:
 
-- A Galaxy S26 and a Galaxy Tab S8+ connect and send a severity change to each other.
-- A Galaxy S26 and a Galaxy S24 did not connect when they were not close to each other.
+- A Galaxy S25 Ultra and a Galaxy Tab S8+ connect and send a severity change to each other.
+- A Galaxy S25 Ultra and a Galaxy S24 did not connect when they were not close to each other.
 - Two emulators connect and exchange operations in both directions. A real phone and an emulator do not find each other, because the emulator radios are virtual.
 
 ## Tests
