@@ -33,28 +33,34 @@ import com.wildfiresync.core.NodeId
 import com.wildfiresync.core.OpId
 import com.wildfiresync.core.ReportId
 import com.wildfiresync.core.SetSeverity
+import com.wildfiresync.device.experiment.ExperimentScreen
+import com.wildfiresync.device.experiment.ExperimentUi
+import com.wildfiresync.device.experiment.createExperiment
 import java.time.Instant
 import kotlin.random.Random
 
 class MainActivity : ComponentActivity() {
 
     private lateinit var p2pManager: P2pManager
+    private lateinit var experiment: ExperimentUi
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         val localName = DeviceIdentity.get(applicationContext)
         p2pManager = P2pManager(applicationContext, localName)
+        experiment = createExperiment(applicationContext, localName, p2pManager)
 
         setContent {
             MaterialTheme {
-                TabletApp(localName = localName, p2pManager = p2pManager)
+                TabletApp(localName = localName, p2pManager = p2pManager, experiment = experiment)
             }
         }
     }
 
     override fun onDestroy() {
         p2pManager.stop()
+        experiment.close()
         super.onDestroy()
     }
 }
@@ -63,10 +69,11 @@ private enum class Screen(val label: String) {
     REPORTS("Reports"),
     SERVER("Server"),
     P2P("P2P"),
+    EXPERIMENT("Experiment"),
 }
 
 @Composable
-private fun TabletApp(localName: String, p2pManager: P2pManager) {
+private fun TabletApp(localName: String, p2pManager: P2pManager, experiment: ExperimentUi) {
     var screen by rememberSaveable { mutableStateOf(Screen.REPORTS) }
 
     Scaffold(
@@ -83,6 +90,13 @@ private fun TabletApp(localName: String, p2pManager: P2pManager) {
                 Screen.REPORTS -> ReportsScreen()
                 Screen.SERVER -> ServerScreen()
                 Screen.P2P -> P2pScreen(localName = localName, manager = p2pManager)
+                Screen.EXPERIMENT -> ExperimentScreen(
+                    manager = p2pManager,
+                    runner = experiment.runner,
+                    store = experiment.store,
+                    settings = experiment.settings,
+                    rows = experiment.rows,
+                )
             }
         }
     }
