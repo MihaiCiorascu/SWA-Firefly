@@ -35,7 +35,7 @@ The scenarios in Section 2.4 cover the requirements that shape the architecture.
 
 ## B.1 Experiment 1: Peer-to-peer sync between two real tablets
 
-**Setup.** Two Samsung devices from the team run the tablet app, which needs Android 14 or newer. A Galaxy S26, a Galaxy S24, and a Galaxy Tab S8+ are available. Bluetooth and Wi-Fi are switched on, because Nearby Connections does not switch them on. One device is the sender and the other the receiver. The sender generates the events of a run, the receiver stores each event in a separate SQLite database that uses the same schema as the tablet store, and both devices write one row per run to a file.
+**Setup.** Two Samsung devices from the team run the tablet app, which needs Android 14 or newer. A Galaxy S25 Ultra, a Galaxy S24, and a Galaxy Tab S8+ are available. Bluetooth and Wi-Fi are switched on, because Nearby Connections does not switch them on. One device is the sender and the other the receiver. The sender generates the events of a run, the receiver stores each event in a separate SQLite database that uses the same schema as the tablet store, and both devices write one row per run to a file.
 
 **Variables.** A pilot at one metre with 1,000 events compares 1, 10, and 50 events per payload, because a byte payload is limited to 32 KB [<a href="#18">18</a>], and fixes the payload size for the rest. The main sweep transfers 100, 1,000, and 10,000 events at one and ten metres in line of sight, with 20 runs per combination. The interrupted runs use 1,000 events, 20 runs per case. In the first case the app on the receiver is force-stopped halfway, in the second the devices are carried out of range halfway. After each interrupted run the devices reconnect and the sender sends the whole run again.
 
