@@ -1,8 +1,9 @@
 package com.wildfiresync.device
 
-import com.wildfiresync.core.OperationEvent
-import com.wildfiresync.core.SetSeverity
+import com.wildfiresync.core.EventMessage
+import com.wildfiresync.core.RecordRef
 import com.wildfiresync.core.Subjects
+import com.wildfiresync.core.schema.Event
 import io.nats.client.Connection
 import io.nats.client.Message
 import io.nats.client.api.PublishAck
@@ -18,12 +19,12 @@ class OperationSender(
 
     private val jetStream = connection.jetStream()
 
-    fun send(operation: SetSeverity): PublishAck = jetStream.publish(toMessage(operation, objectMapper))
+    fun send(event: Event): PublishAck = jetStream.publish(toMessage(event, objectMapper))
 
 }
 
-internal fun toMessage(operation: SetSeverity, objectMapper: ObjectMapper): Message = NatsMessage.builder()
-    .subject(Subjects.forReport(operation.report()))
-    .headers(Headers().add(MSG_ID_HDR, operation.id().toString()))
-    .data(objectMapper.writeValueAsBytes(OperationEvent.of(operation)))
+internal fun toMessage(event: Event, objectMapper: ObjectMapper): Message = NatsMessage.builder()
+    .subject(Subjects.forRecord(RecordRef(event.recordType(), event.recordId())))
+    .headers(Headers().add(MSG_ID_HDR, event.dot().toString()))
+    .data(objectMapper.writeValueAsBytes(EventMessage.of(event)))
     .build()

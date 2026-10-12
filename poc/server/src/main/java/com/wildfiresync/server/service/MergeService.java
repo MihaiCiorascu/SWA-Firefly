@@ -1,6 +1,6 @@
 package com.wildfiresync.server.service;
 
-import com.wildfiresync.core.SetSeverity;
+import com.wildfiresync.core.schema.Event;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,9 +11,10 @@ public class MergeService {
 
 	private static final Logger log = LoggerFactory.getLogger(MergeService.class);
 
-	// TODO: merge the operation into the stored state of its report
-	public void apply(SetSeverity operation) {
-		log.info("{} received for report {} severity {}", operation.id(), operation.report(), operation.severity());
+	// TODO: merge the event into the stored state of its record
+	public void apply(Event event) {
+		log.info("{} {} received for {} {}: {} = {}", event.dot(), event.operation(), event.recordType(),
+				event.recordId(), event.field(), event.value());
 	}
 
 }
