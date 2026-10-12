@@ -316,7 +316,7 @@ We follow the scenarios from Section 2.5. The offline one is split in two, since
 
 ### 3.8 Deployment View
 
-Firefly does not run in the cloud (Section 2.2). The server side runs on one physical machine at the Incident Command Post: the broker, the ICP server and PostgreSQL, started together with Docker Compose. Tablets reach that machine over cellular when they have coverage and keep working offline when they do not. Command staff open the web client in a browser on a computer at the post, over the local network. Two tablets in P2P mode talk directly over Bluetooth or WiFi and never go through the ICP.
+Firefly runs at the incident itself (Section 2.2). The server side is one physical machine at the Incident Command Post, running the broker, the ICP server and PostgreSQL. Tablets reach that machine over cellular when they have coverage and keep working offline when they do not. Command staff open the web client in a browser on a computer at the post, over the local network.
 
 Tablets need Android 14 or newer, since the tablet store uses SQLite's STRICT tables, which Android only ships from version 14.
 
