@@ -47,7 +47,7 @@ Radu Zidaru
   - [4.3 ADR 3: How events are authenticated](#43-adr-3-how-events-are-authenticated)
 - [5. Architectural Experiments](#5-architectural-experiments)
   - [5.1 Experiment 1: How far does the P2P link reach?](#51-experiment-1-how-far-does-the-p2p-link-reach)
-  - [5.2 Experiment 2: How much data does a sync send?](#52-experiment-2-how-much-data-does-a-sync-send)
+  - [5.2 Experiment 2: How long does a sync take?](#52-experiment-2-how-long-does-a-sync-take)
   - [5.3 Limits and next steps](#53-limits-and-next-steps)
 - [References](#references)
 
@@ -425,17 +425,17 @@ We did a walking test with a Galaxy S25 Ultra and a Galaxy S24 in clear line of 
 
 We keep Nearby Connections if the changes arrive at 10m, because crews meet face to face. If not, we test Wi-Fi Direct. The whole logs we sent in Experiment 2 also arrived complete at ~10m and ~20m, in clear line of sight at the same place as the walking test.
 
-### 5.2 Experiment 2: How much data does a sync send?
+### 5.2 Experiment 2: How long does a sync take?
 
 Section 3.3 explains the causal context. In the sync in Section 3.7 a tablet sends only the events the other tablet does not have. We call this the causal-context way. The simple way is to send the whole log. The causal-context way sends less, but it needs one more message and more code. The question is whether it is worth it. This matters for R3 and for the scalability target in Section 2.7.
 
-We send a whole log of 10,000 events from a Galaxy S24 to a Galaxy S25 Ultra over P2P and time it. We did this three times, at ~1m, ~10m and ~20m. The S25 Ultra stored all 10,000 events each time in ~0.8-1.2 s, with nothing lost and no duplicates. We also sync pairs of generated logs and count the bytes. In a first run, the causal-context way sent ~66% fewer bytes at 50% shared and more than 99% fewer at 99% shared.
+We send a whole log of 10,000 events from a Galaxy S24 to a Galaxy S25 Ultra over P2P and time it. We did this three times, at ~1m, ~10m and ~20m. The S25 Ultra stored all 10,000 events each time in ~0.8-1.2 s, with nothing lost and no duplicates.
 
 We keep the causal-context way if sending the whole log takes more than one minute. It took ~1 s, so on this link the simple way is enough. We still have to test a weak link at the edge of the range.
 
 ### 5.3 Limits and next steps
 
-The logs are generated, so they are tidier than real reports. We used only Samsung devices. The walk was in clear line of sight, which is the best case on a fireground. A good result does not prove a decision is right. It only shows it is not wrong. The timing comes from one pair of devices. More measurements come before the Swan release.
+We used only Samsung devices. The walk was in clear line of sight, which is the best case on a fireground. A good result does not prove a decision is right. It only shows it is not wrong. The timing comes from one pair of devices. More measurements come before the Swan release.
 
 ## References
 
