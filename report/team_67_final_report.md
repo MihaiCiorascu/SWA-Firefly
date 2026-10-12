@@ -46,9 +46,9 @@ Radu Zidaru
   - [4.2 ADR 2: How Reports Travel from Server to Device](#42-adr-2-how-reports-travel-from-server-to-device)
   - [4.3 ADR 3: How events are authenticated](#43-adr-3-how-events-are-authenticated)
 - [5. Architectural Experiments](#5-architectural-experiments)
-  - [5.1 Experiment 1: Peer-to-peer sync between two real tablets](#51-experiment-1-peer-to-peer-sync-between-two-real-tablets)
-  - [5.2 Experiment 2: The cost of a sync as the event log grows](#52-experiment-2-the-cost-of-a-sync-as-the-event-log-grows)
-  - [5.3 Validity and next steps](#53-validity-and-next-steps)
+  - [5.1 Experiment 1: How far does the P2P link reach?](#51-experiment-1-how-far-does-the-p2p-link-reach)
+  - [5.2 Experiment 2: How much data does a sync send?](#52-experiment-2-how-much-data-does-a-sync-send)
+  - [5.3 Limits and next steps](#53-limits-and-next-steps)
 - [References](#references)
 
 ## 1. Introduction
@@ -415,27 +415,31 @@ Three aspects constrain the chosen solution. First of all, report provenance nee
 
 ## 5. Architectural Experiments
 
-Two architectural decisions rest on what we expect of the radio and of the data rather than on measurements, and the proof of concept can measure both. We designed one experiment for each, so that the results in the Swan release either confirm the decision or change it. For the Heron release the designs are complete and the measurements on the devices are still to be taken. Appendix B gives the parameters in detail.
+Two of our decisions rest on what we expect, not on data. We test each one with an experiment. The results will confirm a decision or change it. For Heron, both designs are done and each has a first result. The measurements on the devices come before the Swan release. Appendix B has the details.
 
-### 5.1 Experiment 1: Peer-to-peer sync between two real tablets
+### 5.1 Experiment 1: How far does the P2P link reach?
 
-The decision under test is the use of Nearby Connections as the peer-to-peer transport. We preferred it over raw Bluetooth and Wi-Fi Direct because it combines Bluetooth, BLE, and Wi-Fi behind one interface [<a href="#18">18</a>], but that reasoning comes from documentation and not from measurement. It matters for R1, R4, and R5, since two crews may stay together for only a few minutes, and a link that drops halfway must neither lose nor duplicate a report. The question is whether a sync finishes while the crews are still together, and whether an interrupted sync leaves both tablets with exactly the events they should hold.
+We use Nearby Connections for P2P between tablets. We chose it because it puts Bluetooth, BLE and Wi-Fi behind one interface [<a href="#18">18</a>]. We chose it from the documentation, not from data. This matters for R5, where two crews meet and sync. The question is how far apart two devices can be and still receive each other's changes.
 
-Two Samsung devices from the team run the proof-of-concept app, and only physical devices are used, because in our first tests two emulators found each other but a phone and an emulator did not. A first manual test connected a Galaxy S25 Ultra and a Galaxy Tab S8+ and sent a severity change between them, while a Galaxy S25 Ultra and a Galaxy S24 did not connect when they were not close to each other. In a first walking test the S24 sent severity changes while moving away in clear line of sight, and they kept arriving at the S25 Ultra until the phones were about 50 to 60 metres apart (our estimate, not a measurement). The last operation the S25 Ultra received from the S24 was number 352. So distance is one of the variables, and we will measure where delivery stops (Appendix B). One device sends 100, 1,000, and 10,000 generated events at one and ten metres, and some runs are interrupted halfway. We measure the time to connect, the time until the receiver has stored the last event, and the events lost and duplicated.
+Two Samsung devices from the team run the app. We use real devices only. In our first tests two emulators found each other, but a phone and an emulator did not. A Galaxy S25 Ultra and a Galaxy Tab S8+ connected and sent a severity change. A Galaxy S25 Ultra and a Galaxy S24 did not connect when they were not close to each other.
 
-We keep Nearby Connections if at least 19 of 20 runs at ten metres finish within one minute for 1,000 events, a limit we chose because crews cannot be expected to stand together for longer, and if no interrupted run loses or duplicates an event. Otherwise we first add resending based on the dots and then test Wi-Fi Direct directly.
+Then we did a walking test. The S25 Ultra and the S24 were connected, in clear line of sight. The S24 sent severity changes all the time while its owner walked away in a straight line. The changes kept arriving until the phones were about 50 to 60 metres apart. This is our estimate. We did not measure it. The last change the S25 Ultra received was number 352. Next, we repeat the walk with marked distances and write down where the changes stop.
 
-### 5.2 Experiment 2: The cost of a sync as the event log grows
+We keep Nearby Connections if the changes arrive at 10 metres. We chose 10 metres because crews meet face to face. If they stop earlier, we test Wi-Fi Direct.
 
-Section 3.3 defines the causal context, and the sync between two tablets (Section 3.7) sends only the events the other tablet's causal context does not cover. The simpler alternative sends the whole event log and lets the receiver ignore what it already holds, which is safe because applying an event twice changes nothing. The first design sends less but needs an extra round trip and more code, so the question is whether it is worth them. The choice bears on R3 and on the scalability target that the load on a tablet stays roughly constant as an incident grows (Section 2.7).
+### 5.2 Experiment 2: How much data does a sync send?
 
-We sync generated pairs of logs of 100 to 100,000 events per tablet, with 0 to 99 percent of the events held by both, using each design, and measure the bytes sent, the time the receiving tablet needs to store the events in SQLite, and whether both tablets end with identical logs. A first run of the byte counts on a laptop, with 10,000 events per tablet, shows about two thirds fewer bytes for the causal-context design at 50 percent overlap and more than 99 percent fewer at 99 percent overlap, against about 2 MB for the whole log. Whether that matters depends on the transfer rate from Experiment 1 and on the storing time on a tablet, which are still to be measured.
+Section 3.3 explains the causal context. In the sync in Section 3.7, a tablet sends only the events the other tablet does not have. We call this the causal-context way. The simple way is to send the whole log. The causal-context way sends less, but it needs one more message and more code. The question is whether it is worth it. This matters for R3 and for the scalability target in Section 2.7.
 
-We keep the causal-context design if the whole log takes longer than one minute at 10,000 events for some overlap, or if the cost on the receiving tablet grows with the whole log instead of with the number of new events. If the whole log stays within the limit everywhere, we drop the extra round trip and keep the simpler design.
+We sync pairs of generated logs of 100 to 100,000 events per tablet. Between 0 and 99% of the events are held by both tablets. We use both ways. We count the bytes sent, and we check that both tablets end with the same events. We still have to measure the time a tablet needs to store the events.
 
-### 5.3 Validity and next steps
+A first run on a laptop, with 10,000 events per tablet, gave this. At 50% shared, the causal-context way sends about two thirds fewer bytes. At 99% shared, it sends more than 99% fewer bytes. The whole log is about 2 MB.
 
-Both experiments use generated events, which are more uniform than real reports, and one pair of Samsung devices, so the results describe this hardware and not every tablet an agency might own. Ten metres in line of sight is also the optimistic case on a fireground. We therefore read a pass as evidence that a decision is not wrong rather than as proof. The measurements on the devices run between the Heron and Swan releases, and their results go into the Swan report.
+We keep the causal-context way if sending the whole log takes more than one minute. If not, we drop the extra message and keep the simple way.
+
+### 5.3 Limits and next steps
+
+The logs are generated, so they are more regular than real reports. We used only Samsung devices. The walk was in clear line of sight, which is the best case on a fireground. A good result tells us a decision is not wrong. It does not prove it is right. The measurements on the devices come between Heron and Swan. The results go into the Swan report.
 
 ## References
 
