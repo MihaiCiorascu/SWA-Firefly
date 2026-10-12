@@ -1,4 +1,4 @@
-package com.wildfiresync.android
+package com.wildfiresync.device
 
 import com.wildfiresync.core.NodeId
 import com.wildfiresync.core.OpId

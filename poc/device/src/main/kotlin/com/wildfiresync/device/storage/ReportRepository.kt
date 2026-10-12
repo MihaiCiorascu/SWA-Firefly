@@ -1,34 +1,49 @@
 package com.wildfiresync.device.storage
 
-import com.wildfiresync.core.ReportId
+import java.util.UUID
 
-// TODO reports should be derived from the events table, store events and rebuild it instead of writing to it directly
-
-/**
- * example, SQL for the severity column of the reports table (database-schema MR)
- */
 class ReportRepository(private val database: LocalDatabase) {
 
-    fun saveSeverity(report: ReportId, severity: Int) {
-        database.connection.prepareStatement(
-            """
-            INSERT INTO reports (report_id, severity) VALUES (?, ?)
-            ON CONFLICT (report_id) DO UPDATE SET severity = excluded.severity
-            """.trimIndent(),
-        ).use { statement ->
-            statement.setString(1, report.value())
-            statement.setInt(2, severity)
-            statement.executeUpdate()
+    fun insert(report: UUID, incident: UUID) {
+        database.db.execSQL(
+            "INSERT INTO reports (report_id, incident_id) VALUES (?, ?)",
+            arrayOf(report.toString(), incident.toString()),
+        )
+    }
+
+    fun exists(report: UUID): Boolean =
+        database.db.rawQuery("SELECT 1 FROM reports WHERE report_id = ?", arrayOf(report.toString())).use {
+            it.moveToFirst()
         }
+
+    fun raiseSeverity(report: UUID, severity: Int) {
+        database.db.execSQL(
+            "UPDATE reports SET severity = max(coalesce(severity, ?), ?) WHERE report_id = ?",
+            arrayOf<Any>(severity, severity, report.toString()),
+        )
     }
 
     /** null if the report is unknown or has no severity yet */
-    fun findSeverity(report: ReportId): Int? =
-        database.connection.prepareStatement("SELECT severity FROM reports WHERE report_id = ?").use { statement ->
-            statement.setString(1, report.value())
-            statement.executeQuery().use { result ->
-                if (result.next()) result.getInt(1).takeUnless { result.wasNull() } else null
+    fun findSeverity(report: UUID): Int? =
+        database.db.rawQuery("SELECT severity FROM reports WHERE report_id = ?", arrayOf(report.toString())).use {
+            if (it.moveToFirst() && !it.isNull(0)) it.getInt(0) else null
+        }
+
+    fun findAll(): List<StoredReport> =
+        database.db.rawQuery("SELECT report_id, incident_id, severity FROM reports ORDER BY report_id", null).use {
+            buildList {
+                while (it.moveToNext()) {
+                    add(
+                        StoredReport(
+                            UUID.fromString(it.getString(0)),
+                            it.getString(1)?.let(UUID::fromString),
+                            if (it.isNull(2)) null else it.getInt(2),
+                        ),
+                    )
+                }
             }
         }
 
 }
+
+data class StoredReport(val report: UUID, val incident: UUID?, val severity: Int?)
