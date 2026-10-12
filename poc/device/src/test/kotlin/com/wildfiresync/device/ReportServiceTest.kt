@@ -82,6 +82,7 @@ class ReportServiceTest {
 
         assertEquals(Event.Operation.CREATE, create.operation())
         assertNull(create.field())
+        assertEquals("""{"incidentId":"$incident"}""", create.value())
         assertEquals(OpId(node, 1), create.dot())
         assertEquals(emptyMap(), create.causalContext().counters())
 

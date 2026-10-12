@@ -11,7 +11,9 @@ import com.wildfiresync.core.schema.FieldValues.ReportType;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -118,7 +120,7 @@ class MergeLawsTests {
 			RecordRef record = RECORDS.get(random.nextInt(RECORDS.size()));
 
 			if (random.nextInt(10) == 0) {
-				all.add(author.create(record));
+				all.add(author.create(record, initialValues(random, record)));
 			}
 			else {
 				Field field = pickField(random, record);
@@ -135,11 +137,25 @@ class MergeLawsTests {
 	private static Field pickField(Random random, RecordRef record) {
 		List<Field> fields = new ArrayList<>();
 		for (Field field : Field.values()) {
-			if (field.recordType() == record.type()) {
+			if (field.recordType() == record.type() && field.policy() != Field.Policy.IMMUTABLE) {
 				fields.add(field);
 			}
 		}
 		return fields.get(random.nextInt(fields.size()));
+	}
+
+	private static Map<Field, FieldValue> initialValues(Random random, RecordRef record) {
+		Map<Field, FieldValue> values = new EnumMap<>(Field.class);
+		for (Field field : Field.values()) {
+			if (field.recordType() == record.type() && field.policy() == Field.Policy.IMMUTABLE) {
+				values.put(field, valueFor(random, field));
+			}
+		}
+		if (random.nextBoolean()) {
+			Field field = pickField(random, record);
+			values.put(field, valueFor(random, field));
+		}
+		return values;
 	}
 
 	private static FieldValue valueFor(Random random, Field field) {

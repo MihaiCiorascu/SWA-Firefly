@@ -2,6 +2,7 @@ package com.wildfiresync.core;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.wildfiresync.core.schema.Event;
@@ -10,6 +11,7 @@ import com.wildfiresync.core.schema.FieldValue;
 import com.wildfiresync.core.schema.FieldValues.ReportType;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -87,21 +89,40 @@ class TierATests {
 	}
 
 	@Test
-	void anImmutableFieldKeepsItsFirstValue() {
-		UUID incidentId = INCIDENT.id();
-		alpha.set(REPORT, Field.REPORT_INCIDENT_ID, new FieldValue.Reference(incidentId));
-		bravo.set(REPORT, Field.REPORT_INCIDENT_ID, new FieldValue.Reference(new UUID(9, 99)));
+	void theCreateSetsTheImmutableIncidentId() {
+		alpha.create(REPORT, Map.of(Field.REPORT_INCIDENT_ID, new FieldValue.Reference(INCIDENT.id())));
 
 		reconnect();
 
-		assertEquals(new FieldValue.Reference(incidentId), valueOn(alpha, REPORT, Field.REPORT_INCIDENT_ID));
+		assertEquals(new FieldValue.Reference(INCIDENT.id()), valueOn(bravo, REPORT, Field.REPORT_INCIDENT_ID));
+		assertEquals(alpha.world(), bravo.world());
+	}
+
+	@Test
+	void anImmutableFieldCannotBeChangedAfterTheCreate() {
+		alpha.create(REPORT, Map.of(Field.REPORT_INCIDENT_ID, new FieldValue.Reference(INCIDENT.id())));
+
+		assertThrows(IllegalArgumentException.class,
+				() -> alpha.set(REPORT, Field.REPORT_INCIDENT_ID, new FieldValue.Reference(new UUID(9, 99))));
+	}
+
+	@Test
+	void aValueGivenInTheCreateMergesLikeAnyOtherWrite() {
+		alpha.create(REPORT, Map.of(Field.REPORT_INCIDENT_ID, new FieldValue.Reference(INCIDENT.id()),
+				Field.REPORT_SEVERITY, new FieldValue.Num(5)));
+		bravo.set(REPORT, Field.REPORT_SEVERITY, new FieldValue.Num(8));
+
+		reconnect();
+
+		assertEquals(new FieldValue.Num(8), valueOn(alpha, REPORT, Field.REPORT_SEVERITY));
 		assertEquals(alpha.world(), bravo.world());
 	}
 
 	@Test
 	void creatingTheSameRecordOnTwoDevicesIsHarmless() {
-		alpha.create(REPORT);
-		bravo.create(REPORT);
+		Map<Field, FieldValue> values = Map.of(Field.REPORT_INCIDENT_ID, new FieldValue.Reference(INCIDENT.id()));
+		alpha.create(REPORT, values);
+		bravo.create(REPORT, values);
 
 		reconnect();
 

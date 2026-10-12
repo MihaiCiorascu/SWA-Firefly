@@ -1,9 +1,8 @@
 package com.wildfiresync.device
 
 import com.wildfiresync.core.EventMessage
+import com.wildfiresync.core.MergeCore
 import com.wildfiresync.core.schema.Event
-import com.wildfiresync.core.schema.Field
-import com.wildfiresync.core.schema.FieldValues
 import java.time.Instant
 import java.util.UUID
 import org.json.JSONArray
@@ -50,7 +49,7 @@ object OperationWire {
             context.keys().asSequence().associateWith { context.getLong(it) },
             (0 until supersedes.length()).map { UUID.fromString(supersedes.getString(it)) }.toSet(),
         ).toEvent()
-        event.field()?.let { FieldValues.parse(Field.of(event.recordType(), it), event.value()) }
+        MergeCore.validate(event)
         return event
     }
 

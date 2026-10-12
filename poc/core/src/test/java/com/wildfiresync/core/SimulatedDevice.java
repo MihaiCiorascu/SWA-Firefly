@@ -1,6 +1,7 @@
 package com.wildfiresync.core;
 
 import com.wildfiresync.core.schema.CausalContext;
+import com.wildfiresync.core.schema.CreateValues;
 import com.wildfiresync.core.schema.Event;
 import com.wildfiresync.core.schema.Field;
 import com.wildfiresync.core.schema.FieldValue;
@@ -49,8 +50,8 @@ final class SimulatedDevice {
 		return new ArrayList<>(log.values());
 	}
 
-	Event create(RecordRef record) {
-		return author(record, Event.Operation.CREATE, null, null);
+	Event create(RecordRef record, Map<Field, FieldValue> values) {
+		return author(record, Event.Operation.CREATE, null, CreateValues.format(record.type(), values));
 	}
 
 	Event set(RecordRef record, Field field, FieldValue value) {

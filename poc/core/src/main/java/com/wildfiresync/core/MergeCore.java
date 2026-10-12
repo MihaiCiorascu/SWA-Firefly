@@ -1,5 +1,6 @@
 package com.wildfiresync.core;
 
+import com.wildfiresync.core.schema.CreateValues;
 import com.wildfiresync.core.schema.Event;
 import com.wildfiresync.core.schema.Field;
 import com.wildfiresync.core.schema.FieldValue;
@@ -34,10 +35,17 @@ public final class MergeCore {
 		return result;
 	}
 
+	public static void validate(Event event) {
+		switch (event.operation()) {
+			case CREATE, SET_FIELD -> lift(event);
+			case RESOLVE_CONFLICT -> FieldValues.parse(Field.of(event.recordType(), event.field()), event.value());
+		}
+	}
+
 	/** The smallest world in which this event holds. Rejects anything the schema cannot represent. */
 	public static World lift(Event event) {
 		RecordState state = switch (event.operation()) {
-			case CREATE -> new RecordState(true, Map.of());
+			case CREATE -> createState(event);
 			case SET_FIELD -> fieldState(event);
 			case RESOLVE_CONFLICT -> throw new UnsupportedOperationException(
 					"resolving a conflict needs the causal context of the resolving device, which is not merged yet");
@@ -47,18 +55,30 @@ public final class MergeCore {
 		return new World(records);
 	}
 
+	private static RecordState createState(Event event) {
+		Map<Field, FieldState> fields = new EnumMap<>(Field.class);
+		CreateValues.parse(event.recordType(), event.value())
+				.forEach((field, value) -> fields.put(field, assignment(field, value, event)));
+		return new RecordState(true, fields);
+	}
+
 	private static RecordState fieldState(Event event) {
 		Field field = Field.of(event.recordType(), event.field());
-		FieldValue value = FieldValues.parse(field, event.value());
-		FieldState state = switch (field.policy()) {
+		if (field.policy() == Field.Policy.IMMUTABLE) {
+			throw new IllegalArgumentException(field + " is immutable, only the CREATE of the record sets it");
+		}
+		Map<Field, FieldState> fields = new EnumMap<>(Field.class);
+		fields.put(field, assignment(field, FieldValues.parse(field, event.value()), event));
+		return new RecordState(false, fields);
+	}
+
+	private static FieldState assignment(Field field, FieldValue value, Event event) {
+		return switch (field.policy()) {
 			case MAX -> new FieldState.MaxValue(((FieldValue.Num) value).value(), event.eventId());
 			case UNION -> new FieldState.UnionValue(((FieldValue.Types) value).values());
 			case IMMUTABLE, LARGEST_EVENT_ID, MANUAL -> FieldState.Candidates.of(new Candidate(value,
 					event.eventId(), event.dot(), event.actorId(), event.createdAt()));
 		};
-		Map<Field, FieldState> fields = new EnumMap<>(Field.class);
-		fields.put(field, state);
-		return new RecordState(false, fields);
 	}
 
 	/**

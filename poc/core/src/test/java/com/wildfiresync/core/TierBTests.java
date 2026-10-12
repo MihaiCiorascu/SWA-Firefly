@@ -99,7 +99,7 @@ class TierBTests {
 	}
 
 	@Test
-	void aCreateEventCarriesNoFieldOrValue() {
+	void aCreateEventCarriesNoField() {
 		assertThrows(IllegalArgumentException.class,
 				() -> new Event(new UUID(3, 2), REPORT.id(), REPORT.type(), Event.Operation.CREATE, "severity", "5",
 						"crew-lead", Instant.EPOCH, new OpId(new NodeId("tablet-c"), 2), CausalContext.EMPTY,

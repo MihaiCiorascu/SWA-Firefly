@@ -1,7 +1,9 @@
 package com.wildfiresync.device
 
+import com.wildfiresync.core.schema.CreateValues
 import com.wildfiresync.core.schema.Event
 import com.wildfiresync.core.schema.Field
+import com.wildfiresync.core.schema.FieldValue
 import com.wildfiresync.core.schema.FieldValues
 import com.wildfiresync.device.storage.EventRepository
 import com.wildfiresync.device.storage.LocalDatabase
@@ -28,7 +30,11 @@ class ReportService(private val database: LocalDatabase, private val clock: Cloc
     fun createReport(incident: UUID): UUID = database.transaction {
         val report = UUID.randomUUID()
         // TODO agree with the server on what a CREATE value holds, for now only the immutable incidentId
-        write(report, Event.Operation.CREATE, null, """{"${Field.REPORT_INCIDENT_ID.key()}":"$incident"}""")
+        val values = CreateValues.format(
+            Event.RecordType.REPORT,
+            mapOf<Field, FieldValue>(Field.REPORT_INCIDENT_ID to FieldValue.Reference(incident)),
+        )
+        write(report, Event.Operation.CREATE, null, values)
         reports.insert(report, incident)
         report
     }

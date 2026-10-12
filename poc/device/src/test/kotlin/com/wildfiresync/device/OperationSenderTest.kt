@@ -46,8 +46,8 @@ class OperationSenderTest {
     }
 
     @Test
-    fun `a create with no field or value round trips`() {
-        val create = event(Event.Operation.CREATE, null, null)
+    fun `a create with its initial values round trips`() {
+        val create = event(Event.Operation.CREATE, null, """{"incidentId":"00000000-0000-0000-0000-000000000009"}""")
 
         assertEquals(create, roundTrip(create))
     }

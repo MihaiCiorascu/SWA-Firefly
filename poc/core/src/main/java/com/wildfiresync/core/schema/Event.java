@@ -42,9 +42,10 @@ public record Event(
 		causalContext = causalContext == null ? CausalContext.EMPTY : causalContext;
 		supersedes = supersedes == null ? Set.of() : Set.copyOf(supersedes);
 		if (operation == Operation.CREATE) {
-			if (field != null || value != null) {
-				throw new IllegalArgumentException("a CREATE event carries no field or value");
+			if (field != null) {
+				throw new IllegalArgumentException("a CREATE event carries no field, its initial values are in value");
 			}
+			Objects.requireNonNull(value, "value");
 		}
 		else {
 			Objects.requireNonNull(field, "field");

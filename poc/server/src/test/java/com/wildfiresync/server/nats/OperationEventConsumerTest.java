@@ -31,6 +31,8 @@ class OperationEventConsumerTest {
 
 	private static final String REPORT_ID = "00000000-0000-0000-0000-000000000001";
 
+	private static final String INCIDENT_ID = "00000000-0000-0000-0000-000000000009";
+
 	private final MergeService mergeService = mock(MergeService.class);
 
 	private final OperationEventConsumer consumer =
@@ -80,6 +82,36 @@ class OperationEventConsumerTest {
 	}
 
 	@Test
+	void passesACreateWithItsIncidentId() {
+		Message message = messageWith(createEvent("{\\\"incidentId\\\":\\\"%s\\\"}".formatted(INCIDENT_ID)));
+
+		consumer.onMessage(message);
+
+		verify(mergeService).apply(any());
+		verify(message).ack();
+	}
+
+	@Test
+	void terminatesACreateWithoutItsIncidentId() {
+		Message message = messageWith(createEvent("{}"));
+
+		consumer.onMessage(message);
+
+		verify(message).term();
+		verifyNoInteractions(mergeService);
+	}
+
+	@Test
+	void terminatesAnEventThatChangesTheIncidentIdAfterTheCreate() {
+		Message message = messageWith(severityEvent(INCIDENT_ID).replace("\"severity\"", "\"incidentId\""));
+
+		consumer.onMessage(message);
+
+		verify(message).term();
+		verifyNoInteractions(mergeService);
+	}
+
+	@Test
 	void terminatesAnEventWithAMissingField() {
 		Message message = messageWith("""
 				{"eventId":"%s","recordId":"%s","recordType":"REPORT","operation":"SET_FIELD",\
@@ -110,6 +142,14 @@ class OperationEventConsumerTest {
 				"field":"severity","value":"%s","actorId":"crew-tablet-a",\
 				"createdAt":"2026-09-27T10:15:00Z","nodeId":"tablet-a","seq":1,"context":{},"supersedes":[]}"""
 				.formatted(EVENT_ID, REPORT_ID, severity);
+	}
+
+	private static String createEvent(String value) {
+		return """
+				{"eventId":"%s","recordId":"%s","recordType":"REPORT","operation":"CREATE",\
+				"value":"%s","actorId":"crew-tablet-a",\
+				"createdAt":"2026-09-27T10:14:00Z","nodeId":"tablet-a","seq":1,"context":{},"supersedes":[]}"""
+				.formatted(EVENT_ID, REPORT_ID, value);
 	}
 
 	private static Message messageWith(String payload) {

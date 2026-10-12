@@ -29,9 +29,10 @@ class EventMessageTests {
     }
 
     @Test
-    void aCreateRoundTripsWithNoFieldOrValue() {
-        roundTrips(new Event(new UUID(1, 2), RECORD, Event.RecordType.REPORT, Event.Operation.CREATE, null, null,
-                "crew-1", Instant.EPOCH, DOT, CausalContext.EMPTY, Set.of()));
+    void aCreateRoundTripsWithItsInitialValues() {
+        roundTrips(new Event(new UUID(1, 2), RECORD, Event.RecordType.REPORT, Event.Operation.CREATE, null,
+                "{\"incidentId\":\"00000000-0000-0005-0000-000000000001\",\"severity\":\"3\"}", "crew-1", Instant.EPOCH,
+                DOT, CausalContext.EMPTY, Set.of()));
     }
 
     @Test

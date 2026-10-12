@@ -22,22 +22,15 @@ class OperationWireTest {
     }
 
     @Test
-    fun roundTripsACreateWithNoFieldOrValue() {
-        val create = Event(
-            UUID.fromString("00000000-0000-0000-0000-0000000000ab"),
-            event.recordId(),
-            Event.RecordType.REPORT,
-            Event.Operation.CREATE,
-            null,
-            null,
-            "crew-tablet-a",
-            Instant.parse("2026-09-27T10:14:00Z"),
-            OpId(NodeId("tablet-a"), 6),
-            CausalContext.EMPTY,
-            emptySet(),
-        )
+    fun roundTripsACreateWithItsIncidentId() {
+        val create = create("""{"incidentId":"00000000-0000-0000-0000-000000000009"}""")
 
         assertEquals(create, OperationWire.decode(OperationWire.encode(create)))
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun rejectsACreateWithoutItsIncidentId() {
+        OperationWire.decode(OperationWire.encode(create("{}")))
     }
 
     @Test
@@ -57,6 +50,20 @@ class OperationWireTest {
     fun rejectsSeverityOutsideTheAllowedRange() {
         OperationWire.decode(OperationWire.encode(severity("99")))
     }
+
+    private fun create(value: String) = Event(
+        UUID.fromString("00000000-0000-0000-0000-0000000000ab"),
+        event.recordId(),
+        Event.RecordType.REPORT,
+        Event.Operation.CREATE,
+        null,
+        value,
+        "crew-tablet-a",
+        Instant.parse("2026-09-27T10:14:00Z"),
+        OpId(NodeId("tablet-a"), 6),
+        CausalContext.EMPTY,
+        emptySet(),
+    )
 
     private fun severity(value: String) = Event(
         UUID.fromString("00000000-0000-0000-0000-0000000000aa"),

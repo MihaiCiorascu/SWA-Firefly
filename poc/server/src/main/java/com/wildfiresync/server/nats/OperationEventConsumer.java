@@ -3,10 +3,9 @@ package com.wildfiresync.server.nats;
 import java.io.IOException;
 
 import com.wildfiresync.core.EventMessage;
+import com.wildfiresync.core.MergeCore;
 import com.wildfiresync.core.Subjects;
 import com.wildfiresync.core.schema.Event;
-import com.wildfiresync.core.schema.Field;
-import com.wildfiresync.core.schema.FieldValues;
 import com.wildfiresync.server.service.MergeService;
 
 import io.nats.client.ConsumerContext;
@@ -68,9 +67,7 @@ public class OperationEventConsumer {
 		try {
 			event = objectMapper.readValue(message.getData(), EventMessage.class).toEvent();
 			// A value the schema rejects will never apply, so terminate it instead of retrying it forever.
-			if (event.field() != null) {
-				FieldValues.parse(Field.of(event.recordType(), event.field()), event.value());
-			}
+			MergeCore.validate(event);
 		}
 		catch (RuntimeException ex) {
 			log.error("discarding unusable message on {}: {}", message.getSubject(), ex.toString());
