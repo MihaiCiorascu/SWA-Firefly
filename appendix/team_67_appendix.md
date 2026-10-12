@@ -55,13 +55,15 @@ The scenarios in Section 2.4 cover the requirements that shape the architecture.
 
 ## B.2 Experiment 2: How much data does a sync send?
 
+**Real devices.** A Galaxy S24 sends a whole log to a Galaxy S25 Ultra over Nearby Connections. The Experiment tab of the app does this. The S24 sends generated events in payloads of 10 or 50 events. The S25 Ultra stores them in its SQLite database and logs the time from the first message until the last event is stored. We ran 10,000 events (50 per payload) and 1,000 events (10 per payload) three times each. We did not write down the distance between the devices. Table B.2 has every run. In all six runs the S25 Ultra stored every event, with no loss and no duplicates. 10,000 events took ~0.8-1.2 s, far under the one minute of our rule.
+
 **Logs.** Each pair of logs has n events per tablet. A share o of all distinct events is held by both tablets. For each author, both tablets hold the same first events. The other events of that author are held by one tablet only and the two tablets take turns from author to author. So each tablet has about n events and has news for the other tablet. The events of an author have no gaps and start at number 1. This lets one counter per author show what a tablet has seen.
 
 **Ways to sync.** In the whole-log way, each tablet sends all its events in one message. The receiver ignores the events it already has. In the causal-context way, each tablet first sends its causal context. Then it sends only the events the other side does not have. This takes two rounds.
 
 **Grid.** We use 2, 10 or 50 authors. Each tablet has 100, 1,000, 10,000 or 100,000 events. The tablets share 0, 50, 90 or 99% of them. We run both ways with ten random seeds. This makes 960 runs.
 
-**Measurements.** We count the bytes sent (the events as the proof of concept sends them, plus the contexts), the events sent, the events that arrived twice and the rounds. We also measure the time on a laptop. The time to store the events in SQLite is still to be measured on a tablet. Every run checks that both tablets end with the same events.
+**Measurements.** We count the bytes sent (the events as the proof of concept sends them, plus the contexts), the events sent, the events that arrived twice and the rounds. We also measure the time on a laptop. The time on a real device is in Table B.2. A run on the Tab S8+ is still to do. Every run checks that both tablets end with the same events.
 
 **First results.** The first run on a laptop gave the numbers in Table B.1. In all 960 runs both tablets ended with the same events. The time on the laptop stayed below 20 ms, so on a laptop a sync costs bytes, not time. The generated events use short report ids, like `report-7`. They are about 104 bytes each. Real events with longer ids will be bigger.
 
@@ -73,3 +75,14 @@ The scenarios in Section 2.4 cover the requirements that shape the architecture.
 | 99% | 2,010.0 | 10.5 | 99.5% |
 
 *Table B.1: Bytes sent for a sync with 10 authors and 10,000 events per tablet, both directions together, mean of ten seeds.*
+
+| Events | Per payload | Sender time (ms) | Receiver time (ms) | Stored | Lost | Duplicates |
+|---|---|---|---|---|---|---|
+| 10,000 | 50 | 383 | 849 | 10,000 | 0 | 0 |
+| 10,000 | 50 | 333 | 1,198 | 10,000 | 0 | 0 |
+| 10,000 | 50 | 350 | 1,161 | 10,000 | 0 | 0 |
+| 1,000 | 10 | 129 | 600 | 1,000 | 0 | 0 |
+| 1,000 | 10 | 202 | 602 | 1,000 | 0 | 0 |
+| 1,000 | 10 | 219 | 176 | 1,000 | 0 | 0 |
+
+*Table B.2: Sending a whole log from a Galaxy S24 to a Galaxy S25 Ultra over P2P. The sender measures from its first payload until every payload is reported as sent. The receiver measures from the first message until the last event is stored.*

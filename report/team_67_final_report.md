@@ -429,13 +429,13 @@ We keep Nearby Connections if the changes arrive at 10m, because crews meet face
 
 Section 3.3 explains the causal context. In the sync in Section 3.7 a tablet sends only the events the other tablet does not have. We call this the causal-context way. The simple way is to send the whole log. The causal-context way sends less, but it needs one more message and more code. The question is whether it is worth it. This matters for R3 and for the scalability target in Section 2.7.
 
-We sync two generated logs that share between 0 and 99% of their events and count the bytes sent. In a first run, the causal-context way sent ~66% fewer bytes at 50% shared and more than 99% fewer at 99% shared. We still have to measure the time a tablet needs to store the events.
+We send a whole log of 10,000 events from a Galaxy S24 to a Galaxy S25 Ultra over P2P and time it. We did this three times. The S25 Ultra stored all 10,000 events each time in ~0.8-1.2 s, with nothing lost and no duplicates. We also sync pairs of generated logs and count the bytes. In a first run, the causal-context way sent ~66% fewer bytes at 50% shared and more than 99% fewer at 99% shared.
 
-We keep the causal-context way if sending the whole log takes more than one minute. If not, we keep the simple way.
+We keep the causal-context way if sending the whole log takes more than one minute. It took ~1 s, so on this link the simple way is enough. We still have to test a weak link at the edge of the range.
 
 ### 5.3 Limits and next steps
 
-The logs are generated, so they are tidier than real reports. We used only Samsung devices. The walk was in clear line of sight, which is the best case on a fireground. A good result does not prove a decision is right. It only shows it is not wrong. The measurements on the devices come before the Swan release.
+The logs are generated, so they are tidier than real reports. We used only Samsung devices. The walk was in clear line of sight, which is the best case on a fireground. A good result does not prove a decision is right. It only shows it is not wrong. The timing comes from one pair of devices. More measurements come before the Swan release.
 
 ## References
 
