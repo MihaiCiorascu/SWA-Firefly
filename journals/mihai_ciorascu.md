@@ -35,7 +35,7 @@ W3 (14 - 20 sep)
 
 What happened this week:
 
-### Monday
+### Tuesday
 Team meeting (2h). We talked about how to order events across the system and agreed to use vector clocks or DVV for this. Then we went through the use cases one by one and worked out how the services should talk to each other.
 
 ### Thursday
@@ -54,7 +54,7 @@ Lowered the word count and fixed inconsistencies between text and citations & di
 
 ### Hours
 
-Team meeting on event ordering and use cases (Mon): 2h
+Team meeting on event ordering and use cases (Tue): 2h
 Android research (Thu): 1.5h
 Report meeting and task split (Sat): 2h
 PA3 domain model work (Sat): 4h
