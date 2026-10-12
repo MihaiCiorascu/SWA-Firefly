@@ -18,7 +18,7 @@ public final class Replica {
 
 	/** Adds an event. False if it is already held. Throws if it would leave a gap in its author's prefix. */
 	public boolean add(WireEvent event) {
-		OpId dot = event.operation().id();
+		OpId dot = event.event().dot();
 		List<WireEvent> log = byAuthor.computeIfAbsent(dot.node(), node -> new ArrayList<>());
 		if (dot.seq() <= log.size()) {
 			return false;
@@ -52,7 +52,7 @@ public final class Replica {
 		List<WireEvent> events = new ArrayList<>();
 		for (List<WireEvent> log : byAuthor.values()) {
 			for (WireEvent event : log) {
-				if (!other.covers(event.operation().id())) {
+				if (!other.covers(event.event().dot())) {
 					events.add(event);
 				}
 			}

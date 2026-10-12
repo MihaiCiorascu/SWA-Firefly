@@ -2,11 +2,13 @@ package com.wildfiresync.device.experiment
 
 import com.wildfiresync.core.NodeId
 import com.wildfiresync.core.OpId
-import com.wildfiresync.core.ReportId
-import com.wildfiresync.core.SetSeverity
+import com.wildfiresync.core.schema.CausalContext
+import com.wildfiresync.core.schema.Event
+import com.wildfiresync.core.schema.Field
 import com.wildfiresync.device.OperationWire
 import com.wildfiresync.device.storage.LocalDatabase
 import java.time.Instant
+import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -108,37 +110,45 @@ class ExperimentRunnerTest {
 
     @Test
     fun `an event that arrives twice is counted but stored once`() {
-        val operations = (1L..5L).map {
-            SetSeverity(OpId(NodeId("exp-x"), it), ReportId("00000000-0000-4000-8000-0000000000e1"), 3, Instant.parse("2026-10-01T06:00:00Z"))
-        }
+        val events = (1L..5L).map { severity("exp-x", it, 3) }
 
-        assertEquals(5, receiverStore.insertIfAbsent(operations))
-        assertEquals(0, receiverStore.insertIfAbsent(operations))
+        assertEquals(5, receiverStore.insertIfAbsent(events))
+        assertEquals(0, receiverStore.insertIfAbsent(events))
         assertEquals(5, receiverStore.count("x"))
     }
 
     @Test
     fun `payloads for the largest batch stay under the size limit`() {
-        val operations = (1L..50L).map {
-            SetSeverity(OpId(NodeId("exp-0123456789ab"), it), ReportId("00000000-0000-4000-8000-0000000000e1"), 10, Instant.parse("2026-10-01T06:00:00Z"))
-        }
+        val events = (1L..50L).map { severity("exp-0123456789ab", it, 10) }
 
-        val bytes = RunProtocol.encodeEvents("0123456789ab", operations)
+        val bytes = RunProtocol.encodeEvents("0123456789ab", events)
 
         assertTrue(bytes.size < RunProtocol.MAX_PAYLOAD_BYTES, "${bytes.size} bytes")
         assertFailsWith<IllegalArgumentException> {
-            RunProtocol.encodeEvents("0123456789ab", operations + operations + operations + operations + operations + operations + operations + operations + operations + operations)
+            RunProtocol.encodeEvents("0123456789ab", events + events + events + events + events + events + events + events + events + events)
         }
     }
 
     @Test
     fun `payloads of other features are left to their own handler`() {
-        val single = OperationWire.encode(
-            SetSeverity(OpId(NodeId("crew-1"), 1), ReportId("report-1"), 4, Instant.parse("2026-10-01T06:00:00Z")),
-        )
+        val single = OperationWire.encode(severity("crew-1", 1, 4))
 
         assertFalse(receiver.handle(single))
         assertFalse(receiver.handle("not json".toByteArray()))
     }
+
+    private fun severity(node: String, seq: Long, severity: Int) = Event(
+        UUID.nameUUIDFromBytes("$node:$seq".toByteArray()),
+        UUID.fromString("00000000-0000-4000-8000-0000000000e1"),
+        Event.RecordType.REPORT,
+        Event.Operation.SET_FIELD,
+        Field.REPORT_SEVERITY.key(),
+        severity.toString(),
+        node,
+        Instant.parse("2026-10-01T06:00:00Z"),
+        OpId(NodeId(node), seq),
+        CausalContext.EMPTY,
+        emptySet(),
+    )
 
 }

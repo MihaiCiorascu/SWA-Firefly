@@ -2,9 +2,9 @@ package com.wildfiresync.device.experiment
 
 import android.content.ContentValues
 import android.database.sqlite.SQLiteDatabase
-import com.wildfiresync.core.SetSeverity
+import com.wildfiresync.core.schema.Event
+import com.wildfiresync.device.storage.Json
 import com.wildfiresync.device.storage.LocalDatabase
-import java.util.UUID
 
 /**
  * Where the experiment's events are kept. A separate database file with the shared schema, so test runs never mix
@@ -12,11 +12,11 @@ import java.util.UUID
  */
 class ExperimentStore(private val database: LocalDatabase) {
 
-    /** Stores the operations that are not held yet, in one transaction. Returns how many were new. */
-    fun insertIfAbsent(operations: List<SetSeverity>): Int = database.transaction {
-        operations.count { operation ->
+    /** Stores the events that are not held yet, in one transaction. Returns how many were new. */
+    fun insertIfAbsent(events: List<Event>): Int = database.transaction {
+        events.count { event ->
             // the unique (dot_device_id, dot_sequence) constraint turns a redelivery into a no-op
-            database.db.insertWithOnConflict("events", null, values(operation), SQLiteDatabase.CONFLICT_IGNORE) != -1L
+            database.db.insertWithOnConflict("events", null, values(event), SQLiteDatabase.CONFLICT_IGNORE) != -1L
         }
     }
 
@@ -30,21 +30,18 @@ class ExperimentStore(private val database: LocalDatabase) {
         database.db.execSQL("DELETE FROM events")
     }
 
-    private fun values(operation: SetSeverity) = ContentValues().apply {
-        val node = operation.id().node().value()
-        val seq = operation.id().seq()
-        put("event_id", UUID.nameUUIDFromBytes("$node:$seq".toByteArray()).toString())
-        put("record_id", operation.report().value())
-        put("record_type", "REPORT")
-        put("operation", "SET_FIELD")
-        put("field", "severity")
-        put("value", operation.severity().toString())
-        put("actor_id", node)
-        put("created_at", operation.recordedAt().toString())
-        put("dot_device_id", node)
-        put("dot_sequence", seq)
-        // The wire format carries no causal context yet.
-        put("causal_context", "{}")
+    private fun values(event: Event) = ContentValues().apply {
+        put("event_id", event.eventId().toString())
+        put("record_id", event.recordId().toString())
+        put("record_type", event.recordType().name)
+        put("operation", event.operation().name)
+        put("field", event.field())
+        put("value", event.value())
+        put("actor_id", event.actorId())
+        put("created_at", event.createdAt().toString())
+        put("dot_device_id", event.dot().node().value())
+        put("dot_sequence", event.dot().seq())
+        put("causal_context", Json.write(event.causalContext()))
     }
 
     companion object {

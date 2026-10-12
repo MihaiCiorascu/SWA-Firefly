@@ -2,12 +2,16 @@ package com.wildfiresync.device.experiment
 
 import com.wildfiresync.core.NodeId
 import com.wildfiresync.core.OpId
-import com.wildfiresync.core.ReportId
-import com.wildfiresync.core.SetSeverity
+import com.wildfiresync.core.schema.CausalContext
+import com.wildfiresync.core.schema.Event
+import com.wildfiresync.core.schema.Field
 import java.time.Instant
+import java.util.UUID
 
 // The schema requires report ids to be lowercase UUIDs.
 private const val REPORT = "00000000-0000-4000-8000-0000000000e1"
+
+private val SEVERITY = Field.REPORT_SEVERITY.range().orElseThrow()
 
 private val BASE = Instant.parse("2026-10-01T06:00:00Z")
 
@@ -113,8 +117,8 @@ class ExperimentRunner(
         var seq = 1L
         while (seq <= run.total) {
             val last = minOf(run.total.toLong(), seq + run.batch - 1)
-            val operations = (seq..last).map { operation(run.run, it) }
-            if (!queue(run, RunProtocol.encodeEvents(run.run, operations))) return false
+            val events = (seq..last).map { event(run.run, it) }
+            if (!queue(run, RunProtocol.encodeEvents(run.run, events))) return false
             seq = last + 1
         }
         run.sealed = true
@@ -153,11 +157,11 @@ class ExperimentRunner(
                 incoming = Incoming(message.run, message.total, message.batch, attempt, clock())
             }
             is RunProtocol.Message.Events -> {
-                val stored = store.insertIfAbsent(message.operations)
+                val stored = store.insertIfAbsent(message.events)
                 val run = incoming?.takeIf { it.run == message.run } ?: return true
                 run.payloads++
-                run.received += message.operations.size
-                run.duplicates += message.operations.size - stored
+                run.received += message.events.size
+                run.duplicates += message.events.size - stored
                 if (!run.logged && store.count(run.run) >= run.total) {
                     run.logged = true
                     log(row(run, complete = true))
@@ -184,11 +188,21 @@ class ExperimentRunner(
 
     private fun millisSince(startNanos: Long) = (clock() - startNanos) / 1_000_000
 
-    private fun operation(run: String, seq: Long) = SetSeverity(
-        OpId(NodeId(ExperimentStore.author(run)), seq),
-        ReportId(REPORT),
-        SetSeverity.MIN + (seq % 10).toInt(),
-        BASE.plusSeconds(seq),
-    )
+    private fun event(run: String, seq: Long): Event {
+        val author = ExperimentStore.author(run)
+        return Event(
+            UUID.nameUUIDFromBytes("$author:$seq".toByteArray()),
+            UUID.fromString(REPORT),
+            Event.RecordType.REPORT,
+            Event.Operation.SET_FIELD,
+            Field.REPORT_SEVERITY.key(),
+            (SEVERITY.min() + (seq % 10).toInt()).toString(),
+            author,
+            BASE.plusSeconds(seq),
+            OpId(NodeId(author), seq),
+            CausalContext.EMPTY,
+            emptySet(),
+        )
+    }
 
 }

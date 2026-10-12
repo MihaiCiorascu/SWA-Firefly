@@ -1,7 +1,7 @@
 package com.wildfiresync.experiments;
 
-import com.wildfiresync.core.SetSeverity;
+import com.wildfiresync.core.schema.Event;
 
-/** An operation together with the size of the JSON the device sends for it. */
-public record WireEvent(SetSeverity operation, int wireBytes) {
+/** An event together with the size of the JSON the device sends for it. */
+public record WireEvent(Event event, int wireBytes) {
 }

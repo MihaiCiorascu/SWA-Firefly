@@ -11,13 +11,9 @@ public final class Subjects {
 	private Subjects() {
 	}
 
-	public static String forReport(ReportId report) {
-		Objects.requireNonNull(report, "report");
-		String token = report.value();
-		if (!isValidToken(token)) {
-			throw new IllegalArgumentException("report id is not usable as a subject token: " + token);
-		}
-		return PREFIX + "." + token;
+	public static String forRecord(RecordRef record) {
+		Objects.requireNonNull(record, "record");
+		return PREFIX + "." + record.type().name().toLowerCase() + "." + record.id();
 	}
 
 	private static boolean isValidToken(String token) {

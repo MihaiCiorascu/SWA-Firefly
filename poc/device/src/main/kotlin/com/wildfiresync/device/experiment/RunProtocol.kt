@@ -1,6 +1,6 @@
 package com.wildfiresync.device.experiment
 
-import com.wildfiresync.core.SetSeverity
+import com.wildfiresync.core.schema.Event
 import com.wildfiresync.device.OperationWire
 import org.json.JSONArray
 import org.json.JSONException
@@ -14,20 +14,20 @@ object RunProtocol {
 
     sealed interface Message {
         data class Start(val run: String, val total: Int, val batch: Int) : Message
-        data class Events(val run: String, val operations: List<SetSeverity>) : Message
+        data class Events(val run: String, val events: List<Event>) : Message
     }
 
     fun encodeStart(run: String, total: Int, batch: Int): ByteArray =
         JSONObject().put("type", "start").put("run", run).put("total", total).put("batch", batch)
             .toString().toByteArray(Charsets.UTF_8)
 
-    fun encodeEvents(run: String, operations: List<SetSeverity>): ByteArray {
+    fun encodeEvents(run: String, events: List<Event>): ByteArray {
         val array = JSONArray()
-        operations.forEach { array.put(JSONObject(String(OperationWire.encode(it), Charsets.UTF_8))) }
+        events.forEach { array.put(JSONObject(String(OperationWire.encode(it), Charsets.UTF_8))) }
         val bytes = JSONObject().put("type", "events").put("run", run).put("ops", array)
             .toString().toByteArray(Charsets.UTF_8)
         require(bytes.size <= MAX_PAYLOAD_BYTES) {
-            "${operations.size} events take ${bytes.size} bytes, a payload holds at most $MAX_PAYLOAD_BYTES"
+            "${events.size} events take ${bytes.size} bytes, a payload holds at most $MAX_PAYLOAD_BYTES"
         }
         return bytes
     }
@@ -42,11 +42,11 @@ object RunProtocol {
         return when (json.optString("type")) {
             "start" -> Message.Start(json.getString("run"), json.getInt("total"), json.getInt("batch"))
             "events" -> {
-                val operations = json.getJSONArray("ops")
+                val events = json.getJSONArray("ops")
                 Message.Events(
                     json.getString("run"),
-                    (0 until operations.length()).map {
-                        OperationWire.decode(operations.getJSONObject(it).toString().toByteArray(Charsets.UTF_8))
+                    (0 until events.length()).map {
+                        OperationWire.decode(events.getJSONObject(it).toString().toByteArray(Charsets.UTF_8))
                     },
                 )
             }

@@ -5,9 +5,10 @@ import com.google.gson.GsonBuilder
 import com.google.gson.TypeAdapter
 import com.google.gson.stream.JsonReader
 import com.google.gson.stream.JsonWriter
-import com.wildfiresync.core.OperationEvent
-import com.wildfiresync.core.SetSeverity
+import com.wildfiresync.core.EventMessage
+import com.wildfiresync.core.RecordRef
 import com.wildfiresync.core.Subjects
+import com.wildfiresync.core.schema.Event
 import io.nats.client.Connection
 import io.nats.client.Message
 import io.nats.client.api.PublishAck
@@ -23,14 +24,14 @@ class OperationSender(
 
     private val jetStream = connection.jetStream()
 
-    fun send(operation: SetSeverity): PublishAck = jetStream.publish(toMessage(operation, gson))
+    fun send(event: Event): PublishAck = jetStream.publish(toMessage(event, gson))
 
 }
 
-internal fun toMessage(operation: SetSeverity, gson: Gson): Message = NatsMessage.builder()
-    .subject(Subjects.forReport(operation.report()))
-    .headers(Headers().add(MSG_ID_HDR, operation.id().toString()))
-    .data(gson.toJson(OperationEvent.of(operation)).toByteArray(Charsets.UTF_8))
+internal fun toMessage(event: Event, gson: Gson): Message = NatsMessage.builder()
+    .subject(Subjects.forRecord(RecordRef(event.recordType(), event.recordId())))
+    .headers(Headers().add(MSG_ID_HDR, event.dot().toString()))
+    .data(gson.toJson(EventMessage.of(event)).toByteArray(Charsets.UTF_8))
     .build()
 
 internal val operationGson: Gson = GsonBuilder()

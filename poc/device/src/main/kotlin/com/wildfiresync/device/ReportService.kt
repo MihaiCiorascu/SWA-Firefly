@@ -1,9 +1,10 @@
 package com.wildfiresync.device
 
-import com.wildfiresync.core.ReportId
-import com.wildfiresync.core.SetSeverity
+import com.wildfiresync.core.schema.CreateValues
 import com.wildfiresync.core.schema.Event
 import com.wildfiresync.core.schema.Field
+import com.wildfiresync.core.schema.FieldValue
+import com.wildfiresync.core.schema.FieldValues
 import com.wildfiresync.device.storage.EventRepository
 import com.wildfiresync.device.storage.LocalDatabase
 import com.wildfiresync.device.storage.ReplicaStateRepository
@@ -26,34 +27,35 @@ class ReportService(private val database: LocalDatabase, private val clock: Cloc
     private val events = EventRepository(database)
     private val reports = ReportRepository(database)
 
-    fun createReport(incident: UUID): ReportId = database.transaction {
+    fun createReport(incident: UUID): UUID = database.transaction {
         val report = UUID.randomUUID()
         // TODO agree with the server on what a CREATE value holds, for now only the immutable incidentId
-        write(report, Event.Operation.CREATE, null, """{"${Field.REPORT_INCIDENT_ID.key()}":"$incident"}""")
+        val values = CreateValues.format(
+            Event.RecordType.REPORT,
+            mapOf<Field, FieldValue>(Field.REPORT_INCIDENT_ID to FieldValue.Reference(incident)),
+        )
+        write(report, Event.Operation.CREATE, null, values)
         reports.insert(report, incident)
-        ReportId(report.toString())
+        report
     }
 
-    fun setSeverity(report: ReportId, severity: Int) {
-        require(severity in SetSeverity.MIN..SetSeverity.MAX) {
-            "severity must be between ${SetSeverity.MIN} and ${SetSeverity.MAX}, got $severity"
-        }
-        val record = report.uuid()
+    fun setSeverity(report: UUID, severity: Int) {
+        FieldValues.parse(Field.REPORT_SEVERITY, severity.toString())
         database.transaction {
-            require(reports.exists(record)) { "unknown report $report" }
-            write(record, Event.Operation.SET_FIELD, Field.REPORT_SEVERITY, severity.toString())
-            reports.raiseSeverity(record, severity)
+            require(reports.exists(report)) { "unknown report $report" }
+            write(report, Event.Operation.SET_FIELD, Field.REPORT_SEVERITY, severity.toString())
+            reports.raiseSeverity(report, severity)
         }
     }
 
     /** null if this tablet doesn't know a severity for the report */
-    fun severityOf(report: ReportId): Int? = reports.findSeverity(report.uuid())
+    fun severityOf(report: UUID): Int? = reports.findSeverity(report)
 
     /** every report this tablet knows about */
     fun reports(): List<StoredReport> = reports.findAll()
 
     /** the events behind a report, what will be sent to the server and other tablets */
-    fun eventsOf(report: ReportId): List<Event> = events.forRecord(report.uuid())
+    fun eventsOf(report: UUID): List<Event> = events.forRecord(report)
 
     private fun write(record: UUID, operation: Event.Operation, field: Field?, value: String) {
         val state = checkNotNull(replica.find()) { "tablet is not enrolled" }
@@ -73,7 +75,5 @@ class ReportService(private val database: LocalDatabase, private val clock: Cloc
         events.insert(event)
         replica.advancePast(event.dot())
     }
-
-    private fun ReportId.uuid(): UUID = UUID.fromString(value())
 
 }

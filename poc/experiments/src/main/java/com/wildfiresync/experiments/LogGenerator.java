@@ -1,12 +1,16 @@
 package com.wildfiresync.experiments;
 
+import com.wildfiresync.core.EventMessage;
 import com.wildfiresync.core.NodeId;
 import com.wildfiresync.core.OpId;
-import com.wildfiresync.core.OperationEvent;
-import com.wildfiresync.core.ReportId;
-import com.wildfiresync.core.SetSeverity;
+import com.wildfiresync.core.schema.CausalContext;
+import com.wildfiresync.core.schema.Event;
+import com.wildfiresync.core.schema.Field;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Random;
+import java.util.Set;
+import java.util.UUID;
 import tools.jackson.databind.ObjectMapper;
 
 /**
@@ -20,6 +24,8 @@ import tools.jackson.databind.ObjectMapper;
 public final class LogGenerator {
 
 	private static final Instant START = Instant.parse("2026-10-01T06:00:00Z");
+
+	private static final Field.Range SEVERITY = Field.REPORT_SEVERITY.range().orElseThrow();
 
 	private final ObjectMapper mapper = new ObjectMapper();
 
@@ -60,12 +66,19 @@ public final class LogGenerator {
 	}
 
 	private WireEvent event(NodeId node, int seq, Random random) {
-		SetSeverity operation = new SetSeverity(
+		Event event = new Event(
+				UUID.nameUUIDFromBytes((node.value() + ":" + seq).getBytes(StandardCharsets.UTF_8)),
+				UUID.nameUUIDFromBytes(("report-" + random.nextInt(50)).getBytes(StandardCharsets.UTF_8)),
+				Event.RecordType.REPORT,
+				Event.Operation.SET_FIELD,
+				Field.REPORT_SEVERITY.key(),
+				Integer.toString(SEVERITY.min() + random.nextInt(SEVERITY.max() - SEVERITY.min() + 1)),
+				node.value(),
+				START.plusSeconds(seq),
 				new OpId(node, seq),
-				new ReportId("report-" + random.nextInt(50)),
-				SetSeverity.MIN + random.nextInt(SetSeverity.MAX - SetSeverity.MIN + 1),
-				START.plusSeconds(seq));
-		return new WireEvent(operation, mapper.writeValueAsBytes(OperationEvent.of(operation)).length);
+				CausalContext.EMPTY,
+				Set.of());
+		return new WireEvent(event, mapper.writeValueAsBytes(EventMessage.of(event)).length);
 	}
 
 }

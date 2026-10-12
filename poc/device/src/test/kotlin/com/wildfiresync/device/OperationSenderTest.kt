@@ -1,59 +1,72 @@
 package com.wildfiresync.device
 
+import com.wildfiresync.core.EventMessage
 import com.wildfiresync.core.NodeId
 import com.wildfiresync.core.OpId
-import com.wildfiresync.core.OperationEvent
-import com.wildfiresync.core.ReportId
-import com.wildfiresync.core.SetSeverity
+import com.wildfiresync.core.schema.CausalContext
+import com.wildfiresync.core.schema.Event
+import com.wildfiresync.core.schema.Field
 import io.nats.client.support.NatsJetStreamConstants.MSG_ID_HDR
 import java.time.Instant
+import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 
 class OperationSenderTest {
 
     private val gson = operationGson
 
-    private val operation = SetSeverity(
-        OpId(NodeId("tablet-a"), 7),
-        ReportId("report-1"),
-        4,
-        Instant.parse("2026-09-27T10:15:00Z"),
-    )
+    private val report = UUID.fromString("00000000-0000-0000-0000-000000000001")
+
+    private val event = event(Event.Operation.SET_FIELD, Field.REPORT_SEVERITY.key(), "4")
 
     @Test
-    fun `publishes to the subject of the report`() {
-        assertEquals("events.operation.report-1", toMessage(operation, gson).subject)
+    fun `publishes to the subject of the record`() {
+        assertEquals("events.operation.report.$report", toMessage(event, gson).subject)
     }
 
     @Test
-    fun `carries the operation id as the deduplication header`() {
-        assertEquals("tablet-a:7", toMessage(operation, gson).headers.getFirst(MSG_ID_HDR))
+    fun `carries the dot as the deduplication header`() {
+        assertEquals("tablet-a:7", toMessage(event, gson).headers.getFirst(MSG_ID_HDR))
     }
 
     @Test
     fun `payload is the json the server reads`() {
         assertEquals(
-            """{"nodeId":"tablet-a","seq":7,"reportId":"report-1","severity":4,"recordedAt":"2026-09-27T10:15:00Z"}""",
-            String(toMessage(operation, gson).data, Charsets.UTF_8),
+            """{"eventId":"00000000-0000-0000-0000-0000000000aa","recordId":"$report","recordType":"REPORT",""" +
+                """"operation":"SET_FIELD","field":"severity","value":"4","actorId":"crew-tablet-a",""" +
+                """"createdAt":"2026-09-27T10:15:00Z","nodeId":"tablet-a","seq":7,"context":{},"supersedes":[]}""",
+            String(toMessage(event, gson).data, Charsets.UTF_8),
         )
     }
 
     @Test
-    fun `payload round trips back to the same operation`() {
-        val payload = toMessage(operation, gson).data
-
-        val event = gson.fromJson(String(payload, Charsets.UTF_8), OperationEvent::class.java)
-
-        assertEquals(operation, event.toOperation())
+    fun `payload round trips back to the same event`() {
+        assertEquals(event, roundTrip(event))
     }
 
     @Test
-    fun `rejects a report id that is not a subject token`() {
-        val bad = SetSeverity(operation.id(), ReportId("report.1"), 4, operation.recordedAt())
+    fun `a create with its initial values round trips`() {
+        val create = event(Event.Operation.CREATE, null, """{"incidentId":"00000000-0000-0000-0000-000000000009"}""")
 
-        assertFailsWith<IllegalArgumentException> { toMessage(bad, gson) }
+        assertEquals(create, roundTrip(create))
     }
+
+    private fun roundTrip(event: Event): Event =
+        gson.fromJson(String(toMessage(event, gson).data, Charsets.UTF_8), EventMessage::class.java).toEvent()
+
+    private fun event(operation: Event.Operation, field: String?, value: String?) = Event(
+        UUID.fromString("00000000-0000-0000-0000-0000000000aa"),
+        report,
+        Event.RecordType.REPORT,
+        operation,
+        field,
+        value,
+        "crew-tablet-a",
+        Instant.parse("2026-09-27T10:15:00Z"),
+        OpId(NodeId("tablet-a"), 7),
+        CausalContext.EMPTY,
+        emptySet(),
+    )
 
 }

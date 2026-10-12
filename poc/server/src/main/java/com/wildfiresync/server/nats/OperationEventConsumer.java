@@ -2,9 +2,10 @@ package com.wildfiresync.server.nats;
 
 import java.io.IOException;
 
-import com.wildfiresync.core.OperationEvent;
-import com.wildfiresync.core.SetSeverity;
+import com.wildfiresync.core.EventMessage;
+import com.wildfiresync.core.MergeCore;
 import com.wildfiresync.core.Subjects;
+import com.wildfiresync.core.schema.Event;
 import com.wildfiresync.server.service.MergeService;
 
 import io.nats.client.ConsumerContext;
@@ -62,9 +63,11 @@ public class OperationEventConsumer {
 	}
 
 	void onMessage(Message message) {
-		SetSeverity operation;
+		Event event;
 		try {
-			operation = objectMapper.readValue(message.getData(), OperationEvent.class).toOperation();
+			event = objectMapper.readValue(message.getData(), EventMessage.class).toEvent();
+			// A value the schema rejects will never apply, so terminate it instead of retrying it forever.
+			MergeCore.validate(event);
 		}
 		catch (RuntimeException ex) {
 			log.error("discarding unusable message on {}: {}", message.getSubject(), ex.toString());
@@ -73,11 +76,11 @@ public class OperationEventConsumer {
 		}
 
 		try {
-			mergeService.apply(operation);
+			mergeService.apply(event);
 			message.ack();
 		}
 		catch (RuntimeException ex) {
-			log.error("could not apply {}, will retry: {}", operation.id(), ex.toString());
+			log.error("could not apply {}, will retry: {}", event.eventId(), ex.toString());
 			message.nak();
 		}
 	}

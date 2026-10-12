@@ -27,10 +27,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.wildfiresync.core.SetSeverity
+import com.wildfiresync.core.schema.Field
 import com.wildfiresync.device.storage.StoredReport
 import java.util.UUID
 import kotlin.math.roundToInt
+
+private val SEVERITY = Field.REPORT_SEVERITY.range().orElseThrow()
 
 @Composable
 fun ReportsScreen(viewModel: ReportsViewModel = viewModel()) {
@@ -71,7 +73,7 @@ fun ReportsScreen(viewModel: ReportsViewModel = viewModel()) {
 @Composable
 private fun ReportCard(report: StoredReport, onSave: (Int) -> Unit) {
     var picked by remember(report.severity) {
-        mutableFloatStateOf((report.severity ?: SetSeverity.MIN).toFloat())
+        mutableFloatStateOf((report.severity ?: SEVERITY.min()).toFloat())
     }
 
     Card(modifier = Modifier.fillMaxWidth()) {
@@ -82,8 +84,8 @@ private fun ReportCard(report: StoredReport, onSave: (Int) -> Unit) {
                 Slider(
                     value = picked,
                     onValueChange = { picked = it },
-                    valueRange = SetSeverity.MIN.toFloat()..SetSeverity.MAX.toFloat(),
-                    steps = SetSeverity.MAX - SetSeverity.MIN - 1,
+                    valueRange = SEVERITY.min().toFloat()..SEVERITY.max().toFloat(),
+                    steps = SEVERITY.max() - SEVERITY.min() - 1,
                     modifier = Modifier.weight(1f),
                 )
                 Text("${picked.roundToInt()}", modifier = Modifier.padding(horizontal = 8.dp))

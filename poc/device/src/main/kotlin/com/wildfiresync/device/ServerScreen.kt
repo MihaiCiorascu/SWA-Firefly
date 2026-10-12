@@ -25,7 +25,7 @@ fun ServerScreen(viewModel: ServerViewModel = viewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     // 10.0.2.2 is the computer running the emulator, so the docker-compose nats
     var url by rememberSaveable { mutableStateOf("nats://10.0.2.2:4222") }
-    var report by rememberSaveable { mutableStateOf("report-1") }
+    var report by rememberSaveable { mutableStateOf("00000000-0000-0000-0000-000000000001") }
     var severity by rememberSaveable { mutableStateOf("5") }
     var seq by rememberSaveable { mutableStateOf("1") }
 

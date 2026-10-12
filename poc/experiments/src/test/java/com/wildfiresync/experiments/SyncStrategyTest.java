@@ -6,9 +6,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.wildfiresync.core.NodeId;
 import com.wildfiresync.core.OpId;
-import com.wildfiresync.core.ReportId;
-import com.wildfiresync.core.SetSeverity;
+import com.wildfiresync.core.schema.CausalContext;
+import com.wildfiresync.core.schema.Event;
+import com.wildfiresync.core.schema.Field;
 import java.time.Instant;
+import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 class SyncStrategyTest {
@@ -101,8 +104,9 @@ class SyncStrategyTest {
 	@Test
 	void aReplicaRefusesAnEventThatWouldLeaveAGap() {
 		Replica replica = new Replica();
-		SetSeverity second = new SetSeverity(new OpId(new NodeId("crew-000"), 2), new ReportId("report-1"), 4,
-				Instant.parse("2026-10-01T06:00:02Z"));
+		Event second = new Event(new UUID(1, 2), new UUID(2, 1), Event.RecordType.REPORT, Event.Operation.SET_FIELD,
+				Field.REPORT_SEVERITY.key(), "4", "crew-000", Instant.parse("2026-10-01T06:00:02Z"),
+				new OpId(new NodeId("crew-000"), 2), CausalContext.EMPTY, Set.of());
 
 		assertThrows(IllegalStateException.class, () -> replica.add(new WireEvent(second, 100)));
 		assertEquals(0, replica.size());

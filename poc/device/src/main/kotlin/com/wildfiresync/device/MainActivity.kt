@@ -31,13 +31,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.wildfiresync.core.NodeId
 import com.wildfiresync.core.OpId
-import com.wildfiresync.core.ReportId
-import com.wildfiresync.core.SetSeverity
+import com.wildfiresync.core.schema.CausalContext
+import com.wildfiresync.core.schema.Event
+import com.wildfiresync.core.schema.Field
 import com.wildfiresync.device.experiment.ExperimentScreen
 import com.wildfiresync.device.experiment.ExperimentUi
 import com.wildfiresync.device.experiment.createExperiment
 import java.time.Instant
+import java.util.UUID
 import kotlin.random.Random
+
+private val DEMO_REPORT: UUID = UUID.fromString("00000000-0000-0000-0000-000000000001")
 
 class MainActivity : ComponentActivity() {
 
@@ -188,14 +192,22 @@ fun P2pScreen(localName: String, manager: P2pManager) {
 
         Button(
             onClick = {
-                val operation = SetSeverity(
-                    OpId(NodeId(localName), nextSeq),
-                    ReportId("report-1"),
-                    Random.nextInt(SetSeverity.MIN, SetSeverity.MAX + 1),
+                val severity = Field.REPORT_SEVERITY.range().orElseThrow()
+                val event = Event(
+                    UUID.randomUUID(),
+                    DEMO_REPORT,
+                    Event.RecordType.REPORT,
+                    Event.Operation.SET_FIELD,
+                    Field.REPORT_SEVERITY.key(),
+                    Random.nextInt(severity.min(), severity.max() + 1).toString(),
+                    localName,
                     Instant.now(),
+                    OpId(NodeId(localName), nextSeq),
+                    CausalContext.EMPTY,
+                    emptySet(),
                 )
-                if (manager.send(OperationWire.encode(operation))) {
-                    lastSent = "$operation"
+                if (manager.send(OperationWire.encode(event))) {
+                    lastSent = "$event"
                     nextSeq += 1
                 }
             },

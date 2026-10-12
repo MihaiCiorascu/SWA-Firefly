@@ -2,7 +2,6 @@ package com.wildfiresync.device
 
 import com.wildfiresync.core.NodeId
 import com.wildfiresync.core.OpId
-import com.wildfiresync.core.ReportId
 import com.wildfiresync.core.schema.Event
 import com.wildfiresync.device.storage.LocalDatabase
 import com.wildfiresync.device.storage.ReplicaStateRepository
@@ -71,7 +70,7 @@ class ReportServiceTest {
 
     @Test
     fun `an unknown report is rejected`() {
-        assertFailsWith<IllegalArgumentException> { reports.setSeverity(ReportId(UUID.randomUUID().toString()), 4) }
+        assertFailsWith<IllegalArgumentException> { reports.setSeverity(UUID.randomUUID(), 4) }
     }
 
     @Test
@@ -83,6 +82,7 @@ class ReportServiceTest {
 
         assertEquals(Event.Operation.CREATE, create.operation())
         assertNull(create.field())
+        assertEquals("""{"incidentId":"$incident"}""", create.value())
         assertEquals(OpId(node, 1), create.dot())
         assertEquals(emptyMap(), create.causalContext().counters())
 
@@ -110,7 +110,7 @@ class ReportServiceTest {
 
         val listed = reports.reports().associate { it.report.toString() to it.severity }
 
-        assertEquals(mapOf(first.value() to null, second.value() to 3), listed)
+        assertEquals(mapOf(first.toString() to null, second.toString() to 3), listed)
     }
 
 }
