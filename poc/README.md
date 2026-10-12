@@ -37,7 +37,7 @@ docker compose up -d
 ./gradlew :server:bootRun
 ```
 
-NATS listens on port 4222 (monitoring on 8222). Postgres listens on 5432 with the database `wildfiresync`, user `postgres`, and password `postgres`. The server connects to `nats://localhost:4222`. Stop the containers with `docker compose down`.
+NATS listens on port 4222 (monitoring on 8222). Postgres listens on 5432 with the database `wildfiresync`, user `postgres` and password `postgres`. The server connects to `nats://localhost:4222`. Stop the containers with `docker compose down`.
 
 When the server is ready, its log shows `stream operation-events ready for events.operation.>` and `consuming events.operation.> as server-merge`. When a tablet sends a severity change, the log shows a line like `tablet-a:1 received for report report-1 severity 4`. Sending the same operation twice stores it once, because JetStream drops a message id it has already seen.
 
@@ -68,7 +68,7 @@ You can also open this folder in Android Studio and run `device`. The app has th
 
 1. Install the app on both devices.
 2. Turn on Bluetooth and Wi-Fi on both. Nearby Connections does not do it for you.
-3. Open the app on both, go to the **P2P** tab, tap **Start P2P**, and allow every permission prompt (nearby devices and location).
+3. Open the app on both, go to the **P2P** tab, tap **Start P2P** and allow every permission prompt (nearby devices and location).
 4. Within about 30 seconds each screen should show `Connected to crew-...` with the other device's id.
 5. Tap **Send severity op** on one device and check **Last received** on the other.
 
@@ -76,7 +76,7 @@ What we have seen so far:
 
 - A Galaxy S25 Ultra and a Galaxy Tab S8+ connect and send a severity change to each other.
 - A Galaxy S25 Ultra and a Galaxy S24 did not connect when they were far apart.
-- Once connected in clear line of sight, the S24 and the S25 Ultra kept exchanging severity changes while the S24 walked away. This went on until about 50 to 60 metres. This is an estimate, not a measurement.
+- Once connected in clear line of sight, the S24 and the S25 Ultra kept exchanging severity changes while the S24 walked away. This went on until the phones were ~50-60m apart. This is an estimate, not a measurement.
 - Two emulators connect and exchange operations in both directions. A real phone and an emulator do not find each other, because the emulator radios are virtual.
 
 ## Tests

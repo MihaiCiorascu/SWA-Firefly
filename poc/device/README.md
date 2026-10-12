@@ -18,7 +18,7 @@ Unit tests: `./gradlew :device:testDebugUnitTest`, the db ones run on Robolectri
    `device/build/outputs/apk/debug/device-debug.apk`.
 2. Install it on both devices (`adb install -r <apk>`, or copy the file over and open it).
 3. Turn on Bluetooth and Wi-Fi on both devices. Nearby Connections does not do it for you.
-4. Open the app on both devices, tap **Start P2P**, and allow every permission prompt (nearby
+4. Open the app on both devices, tap **Start P2P** and allow every permission prompt (nearby
    devices, location).
 5. After about 30 seconds each screen should show `Connected to crew-...` and the id of the other
    device. Tap **Send severity op** on one device and look at **Last received** on the other.
@@ -27,4 +27,4 @@ Unit tests: `./gradlew :device:testDebugUnitTest`, the db ones run on Robolectri
 
 - Two emulators (`Tel1`, `Tel2`): connect and exchange operations in both directions.
 - A real phone and an emulator do not find each other, because the emulator radios are virtual.
-- Two real devices: a Galaxy S25 Ultra and a Galaxy Tab S8+ connect and send a severity change. A Galaxy S25 Ultra and a Galaxy S24 did not connect when they were far apart. Once connected in clear line of sight, the S24 and the S25 Ultra kept exchanging severity changes while the S24 walked away. This went on until about 50 to 60 metres. This is an estimate, not a measurement.
+- Two real devices: a Galaxy S25 Ultra and a Galaxy Tab S8+ connect and send a severity change. A Galaxy S25 Ultra and a Galaxy S24 did not connect when they were far apart. Once connected in clear line of sight, the S24 and the S25 Ultra kept exchanging severity changes while the S24 walked away. This went on until the phones were ~50-60m apart. This is an estimate, not a measurement.
