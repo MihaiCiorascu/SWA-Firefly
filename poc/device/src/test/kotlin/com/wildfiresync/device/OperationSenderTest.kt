@@ -7,7 +7,6 @@ import com.wildfiresync.core.schema.CausalContext
 import com.wildfiresync.core.schema.Event
 import com.wildfiresync.core.schema.Field
 import io.nats.client.support.NatsJetStreamConstants.MSG_ID_HDR
-import tools.jackson.databind.ObjectMapper
 import java.time.Instant
 import java.util.UUID
 import kotlin.test.Test
@@ -15,7 +14,7 @@ import kotlin.test.assertEquals
 
 class OperationSenderTest {
 
-    private val objectMapper = ObjectMapper()
+    private val gson = operationGson
 
     private val report = UUID.fromString("00000000-0000-0000-0000-000000000001")
 
@@ -23,12 +22,22 @@ class OperationSenderTest {
 
     @Test
     fun `publishes to the subject of the record`() {
-        assertEquals("events.operation.report.$report", toMessage(event, objectMapper).subject)
+        assertEquals("events.operation.report.$report", toMessage(event, gson).subject)
     }
 
     @Test
     fun `carries the dot as the deduplication header`() {
-        assertEquals("tablet-a:7", toMessage(event, objectMapper).headers.getFirst(MSG_ID_HDR))
+        assertEquals("tablet-a:7", toMessage(event, gson).headers.getFirst(MSG_ID_HDR))
+    }
+
+    @Test
+    fun `payload is the json the server reads`() {
+        assertEquals(
+            """{"eventId":"00000000-0000-0000-0000-0000000000aa","recordId":"$report","recordType":"REPORT",""" +
+                """"operation":"SET_FIELD","field":"severity","value":"4","actorId":"crew-tablet-a",""" +
+                """"createdAt":"2026-09-27T10:15:00Z","nodeId":"tablet-a","seq":7,"context":{},"supersedes":[]}""",
+            String(toMessage(event, gson).data, Charsets.UTF_8),
+        )
     }
 
     @Test
@@ -44,7 +53,7 @@ class OperationSenderTest {
     }
 
     private fun roundTrip(event: Event): Event =
-        objectMapper.readValue(toMessage(event, objectMapper).data, EventMessage::class.java).toEvent()
+        gson.fromJson(String(toMessage(event, gson).data, Charsets.UTF_8), EventMessage::class.java).toEvent()
 
     private fun event(operation: Event.Operation, field: String?, value: String?) = Event(
         UUID.fromString("00000000-0000-0000-0000-0000000000aa"),

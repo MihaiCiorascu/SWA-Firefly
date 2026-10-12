@@ -132,3 +132,33 @@
 | Presentation preparation and scheduling | 2 h |
 | Lectures and slides | 2 h |
 | **Total** | **~10 h** |
+
+
+## Week 5 (28 September - 4 October 2026)
+
+### What I did this week
+
+- **Compared the messaging options (4h).** Looked at Kafka, NATS JetStream, a queue
+  table in Postgres and plain NATS. Our volume is low, so throughput did not decide it.
+  A Kafka client has to reach every broker, a NATS client uses one endpoint,
+  which is better for tablets on bad networks. We switched to NATS JetStream.
+- **Message format and subject names in core (1h).** One definition the device and the
+  server both use.
+- **Server side (3h).** Connects to NATS, declares the stream, consumes the operations
+  and passes them to a service.
+- **Device side (2h).** Function that sends an operation on the subject of its report.
+  Set up docker compose and tested the flow from the device to the server.
+- **CA2 drafts (2h).** Started writing the ADRs. The messaging choice is one of them.
+- **Lectures and slides (2h).**
+
+### Time estimate
+
+| Activity | Estimated time |
+| --- | --- |
+| Comparing the messaging options | 4 h |
+| Message format and subjects in core | 1 h |
+| Server side | 3 h |
+| Device side | 2 h |
+| CA2 drafts | 2 h |
+| Lectures and slides | 2 h |
+| **Total** | **~14 h** |

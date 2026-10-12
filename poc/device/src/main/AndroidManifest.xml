@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Android 12+ (API 31+): needed to advertise, discover, and connect over
+         Bluetooth. neverForLocation because this app never derives a device's
+         physical location from the scan results. -->
+    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_SCAN"
+        android:usesPermissionFlags="neverForLocation" />
+
+    <!-- Needed for the WiFi-based transport Nearby Connections can fall back to. -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+
+    <!-- Android 13+ (API 33+): the modern, non-location permission for WiFi-based
+         nearby device discovery. -->
+    <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES" />
+
+    <!-- Below Android 12, Bluetooth scanning needed location. Play Services' Nearby
+         discovery also rejects startDiscovery without coarse location granted at
+         runtime on newer versions (ApiException 8034), so it is requested everywhere. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+    <!-- Play Services itself needs this even though the actual P2P link is offline. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application
+        android:label="Firefly P2P PoC"
+        android:allowBackup="false"
+        android:theme="@android:style/Theme.Material.Light.NoActionBar">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+    </application>
+
+</manifest>
