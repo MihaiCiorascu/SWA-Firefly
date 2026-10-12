@@ -41,6 +41,14 @@ Radu Zidaru
   - [3.8 Deployment View](#38-deployment-view)
   - [3.9 Architectural Decisions](#39-architectural-decisions)
   - [3.10 How This Connects to Chapter 2](#310-how-this-connects-to-chapter-2)
+- [4. Architectural Decision Records](#4-architectural-decision-records)
+  - [4.1 ADR 1: How Events Travel from Device to Server](#41-adr-1-how-events-travel-from-device-to-server)
+  - [4.2 ADR 2: How Reports Travel from Server to Device](#42-adr-2-how-reports-travel-from-server-to-device)
+  - [4.3 ADR 3: How events are authenticated](#43-adr-3-how-events-are-authenticated)
+- [5. Architectural Experiments](#5-architectural-experiments)
+  - [5.1 Experiment 1: Peer-to-peer sync between two real tablets](#51-experiment-1-peer-to-peer-sync-between-two-real-tablets)
+  - [5.2 Experiment 2: The cost of a sync as the event log grows](#52-experiment-2-the-cost-of-a-sync-as-the-event-log-grows)
+  - [5.3 Validity and next steps](#53-validity-and-next-steps)
 - [References](#references)
 
 ## 1. Introduction
@@ -405,6 +413,30 @@ Three aspects constrain the chosen solution. First of all, report provenance nee
 
 **Consequences.** Each event will carry a signature alongside the dot and the causal context. This means that new code must be added to check signatures before accepting an event. Excluding a lost device means removing its public key from the accepted list, which can reach all devices at the next sync. There is also a synergy with the NATS choice, which offers `nkeys`, which uses the same Ed25519 key pair to authenticate a tablet’s connection to the server, without ever sending a secret over the network [<a href="#17">17</a>]; nkeys only covers that one connection the same way mutual TLS above would, so it does not replace event signing or reach peer-to-peer mode, but the key pair generated for signing can double as a tablet’s nkey, so securing the NATS connection this way costs no second credential to provision. The remaining cost is the new logic itself: signing and verifying on every event, and a provisioning step with one more thing, a public key, that has to be recorded correctly per tablet.
 
+## 5. Architectural Experiments
+
+Two architectural decisions rest on what we expect of the radio and of the data rather than on measurements, and the proof of concept can measure both. We designed one experiment for each, so that the results in the Swan release either confirm the decision or change it. For the Heron release the designs are complete and the measurements on the devices are still to be taken. Appendix B gives the parameters in detail.
+
+### 5.1 Experiment 1: Peer-to-peer sync between two real tablets
+
+The decision under test is the use of Nearby Connections as the peer-to-peer transport. We preferred it over raw Bluetooth and Wi-Fi Direct because it combines Bluetooth, BLE, and Wi-Fi behind one interface [<a href="#18">18</a>], but that reasoning comes from documentation and not from measurement. It matters for R1, R4, and R5, since two crews may stay together for only a few minutes, and a link that drops halfway must neither lose nor duplicate a report. The question is whether a sync finishes while the crews are still together, and whether an interrupted sync leaves both tablets with exactly the events they should hold.
+
+Two Samsung devices from the team run the proof-of-concept app, and only physical devices are used, because in our first tests two emulators found each other but a phone and an emulator did not. A first manual test connected a Galaxy S26 and a Galaxy Tab S8+ and sent a severity change between them, while a Galaxy S26 and a Galaxy S24 did not connect when they were not close to each other, so distance is one of the variables. One device sends 100, 1,000, and 10,000 generated events at one and ten metres, and some runs are interrupted halfway. We measure the time to connect, the time until the receiver has stored the last event, and the events lost and duplicated.
+
+We keep Nearby Connections if at least 19 of 20 runs at ten metres finish within one minute for 1,000 events, a limit we chose because crews cannot be expected to stand together for longer, and if no interrupted run loses or duplicates an event. Otherwise we first add resending based on the dots and then test Wi-Fi Direct directly.
+
+### 5.2 Experiment 2: The cost of a sync as the event log grows
+
+Section 3.3 defines the causal context, and the sync between two tablets (Section 3.7) sends only the events the other tablet's causal context does not cover. The simpler alternative sends the whole event log and lets the receiver ignore what it already holds, which is safe because applying an event twice changes nothing. The first design sends less but needs an extra round trip and more code, so the question is whether it is worth them. The choice bears on R3 and on the scalability target that the load on a tablet stays roughly constant as an incident grows (Section 2.7).
+
+We sync generated pairs of logs of 100 to 100,000 events per tablet, with 0 to 99 percent of the events held by both, using each design, and measure the bytes sent, the time the receiving tablet needs to store the events in SQLite, and whether both tablets end with identical logs. A first run of the byte counts on a laptop, with 10,000 events per tablet, shows about two thirds fewer bytes for the causal-context design at 50 percent overlap and more than 99 percent fewer at 99 percent overlap, against about 2 MB for the whole log. Whether that matters depends on the transfer rate from Experiment 1 and on the storing time on a tablet, which are still to be measured.
+
+We keep the causal-context design if the whole log takes longer than one minute at 10,000 events for some overlap, or if the cost on the receiving tablet grows with the whole log instead of with the number of new events. If the whole log stays within the limit everywhere, we drop the extra round trip and keep the simpler design.
+
+### 5.3 Validity and next steps
+
+Both experiments use generated events, which are more uniform than real reports, and one pair of Samsung devices, so the results describe this hardware and not every tablet an agency might own. Ten metres in line of sight is also the optimistic case on a fireground. We therefore read a pass as evidence that a decision is not wrong rather than as proof. The measurements on the devices run between the Heron and Swan releases, and their results go into the Swan report.
+
 ## References
 
 <a id="1">[1]</a> Los Angeles Fire Department, "Palisades Fire After-Action Review Report," Lafd.org, Oct. 8, 2025. https://lafd.org/sites/default/files/pdf_files/Palisades_AARR_10_08_2025_final.pdf (accessed Sep. 21, 2026)
@@ -440,3 +472,5 @@ Three aspects constrain the chosen solution. First of all, report provenance nee
 <a id="16">[16]</a> NATS, "Connect over WebSocket." Docs.nats.io. https://docs.nats.io/running-a-nats-service/configuration/websocket (accessed Oct. 11, 2026)
 
 <a id="17">[17]</a> NATS, "Authenticating with an NKey." Docs.nats.io. https://docs.nats.io/running-a-nats-service/configuration/securing_nats/auth_intro/nkey_auth (accessed Oct. 11, 2026)
+
+<a id="18">[18]</a> Google, "Nearby Connections overview," Developers.google.com. https://developers.google.com/nearby/connections/overview (accessed Oct. 11, 2026)
