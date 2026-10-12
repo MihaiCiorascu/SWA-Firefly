@@ -57,7 +57,7 @@ Climate change has made major natural disasters common. First responders often w
 
 We propose Firefly, an app that lets emergency personnel record and edit incident reports from the field. The system works offline: personnel can create and edit reports with no connection, and a backend merges conflicting edits once connectivity returns. Since more than one person can edit the same report while offline, we designed a conflict-resolution policy that avoids losing safety-critical information. We also added peer-to-peer sync between devices that are near each other, so personnel get the most complete picture even with low connectivity.
 
-Chapter 3 covers the architecture. Chapter 4 records two architectural decisions. Section 2.8 covers the roadmap.
+Chapter 3 covers the architecture. Chapter 4 records three architectural decisions. Chapter 5 designs two experiments. Section 2.8 covers the roadmap.
 
 ## 2. Problem and Context Analysis
 
