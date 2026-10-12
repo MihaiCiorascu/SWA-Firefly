@@ -37,7 +37,17 @@ docker compose up -d
 ./gradlew :server:bootRun
 ```
 
-NATS listens on port 4222 (monitoring on 8222). Postgres listens on 5432 with the database `wildfiresync`, user `postgres`, and password `postgres`. The server connects to `nats://localhost:4222`. Stop the containers with `docker compose down`. If another Postgres already runs on your computer on port 5432, the container cannot start. Stop that Postgres first, or change the port on the left of `5432:5432` in `docker-compose.yaml` and in the datasource url of `server/src/main/resources/application.yaml`.
+NATS listens on port 4222 (monitoring on 8222). Postgres listens on 5432 with the database `wildfiresync`, user `postgres`, and password `postgres`. The server connects to `nats://localhost:4222`. Stop the containers with `docker compose down`.
+
+When the server is ready, its log shows `stream operation-events ready for events.operation.>` and `consuming events.operation.> as server-merge`. When a tablet sends a severity change, the log shows a line like `tablet-a:1 received for report report-1 severity 4`. Sending the same operation twice stores it once, because JetStream drops a message id it has already seen.
+
+If another Postgres already runs on your computer on port 5432, the Postgres container cannot start. Stop that Postgres first, or change the port on the left of `5432:5432` in `docker-compose.yaml` (for example to `5433:5432`) and start the server with the matching address, without editing any file:
+
+```
+SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5433/wildfiresync ./gradlew :server:bootRun
+```
+
+In PowerShell set the variable first with `$env:SPRING_DATASOURCE_URL = "jdbc:postgresql://localhost:5433/wildfiresync"`.
 
 ### 2. Tablet app
 
@@ -74,4 +84,4 @@ What we have seen so far:
 ./gradlew :core:test :device:testDebugUnitTest
 ```
 
-The database tests of the tablet app run on Robolectric, so they need no device. `./gradlew :server:test` starts the Spring application, so it needs the Postgres container from step 1 to be running.
+The database tests of the tablet app run on Robolectric, so they need no device. `./gradlew :server:test` starts the Spring application, so it needs the Postgres container from step 1 to be running. If you changed the Postgres port, set `SPRING_DATASOURCE_URL` as above before running the tests.
