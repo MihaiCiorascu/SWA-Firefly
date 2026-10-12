@@ -1,16 +1,16 @@
 # Firefly proof of concept
 
-Firefly lets crews record incident reports on a tablet without a connection and merge them when tablets meet or come back into coverage (see the report). This proof of concept shows the three things the architecture depends on: a tablet that keeps working offline, a tablet that sends its events to a server through a message broker, and two tablets that find each other and exchange events directly.
+Firefly lets crews write incident reports on a tablet without a connection. The reports merge when tablets meet or come back into coverage (see the report). This proof of concept shows three things the architecture needs. A tablet works offline. A tablet sends its events to a server through a message broker. Two tablets find each other and exchange events directly.
 
 ## What works and what does not yet
 
 | Part | Status |
 |---|---|
-| Tablet app (`device`) | The Reports tab saves report changes as events in a local SQLite store. The Server tab sends one severity change to NATS. The P2P tab connects two devices over Nearby Connections and sends a severity change from one to the other. |
-| ICP server (`server`) | Reads the `operation-events` stream from NATS. The merge service only logs each event so far. The Postgres schema exists. |
-| Shared library (`core`) | Ids, events, the causal context, the field policies, and the first severity merge. Used by the server and the tablet app. |
+| Tablet app (`device`) | The Reports tab saves report changes as events in a local SQLite store. The Server tab sends one severity change to NATS. The P2P tab connects two devices over Nearby Connections. One device sends a severity change to the other. |
+| ICP server (`server`) | Reads the `operation-events` stream from NATS. The merge service only logs each event so far. The Postgres schema is ready. |
+| Shared library (`core`) | Ids, events, the causal context, the field policies and the first severity merge. The server and the tablet app both use it. |
 
-Not built yet: zone subscription, the report publisher, tablet enrolment, the command web client, and merging what arrives over P2P.
+Not built yet: zone subscription, the report publisher, tablet enrolment, the command web client and merging what arrives over P2P.
 
 ## Layout
 
@@ -37,7 +37,7 @@ docker compose up -d
 ./gradlew :server:bootRun
 ```
 
-NATS listens on port 4222 (monitoring on 8222). Postgres listens on 5432 with the database `wildfiresync`, user `postgres`, and password `postgres`. The server connects to `nats://localhost:4222`. Stop the containers with `docker compose down`.
+NATS listens on port 4222 (monitoring on 8222). Postgres listens on 5432 with the database `wildfiresync`, user `postgres` and password `postgres`. The server connects to `nats://localhost:4222`. Stop the containers with `docker compose down`.
 
 When the server is ready, its log shows `stream operation-events ready for events.operation.>` and `consuming events.operation.> as server-merge`. When a tablet sends a severity change, the log shows a line like `tablet-a:1 received for report report-1 severity 4`. Sending the same operation twice stores it once, because JetStream drops a message id it has already seen.
 
@@ -60,7 +60,7 @@ adb install -r device/build/outputs/apk/debug/device-debug.apk
 
 You can also open this folder in Android Studio and run `device`. The app has three tabs.
 
-- **Reports**: create a report and set its severity. The change is saved as an event in the local database.
+- **Reports**: create a report and set its severity. The app saves the change as an event in the local database.
 - **Server**: send a severity change to NATS. On an emulator the address is `nats://10.0.2.2:4222`. On a phone on the same network use `nats://<address of your computer>:4222`. The server log then shows that it received the operation.
 - **P2P**: see the next section.
 
@@ -68,15 +68,16 @@ You can also open this folder in Android Studio and run `device`. The app has th
 
 1. Install the app on both devices.
 2. Turn on Bluetooth and Wi-Fi on both. Nearby Connections does not do it for you.
-3. Open the app on both, go to the **P2P** tab, tap **Start P2P**, and allow every permission prompt (nearby devices and location).
+3. Open the app on both, go to the **P2P** tab, tap **Start P2P** and allow every permission prompt (nearby devices and location).
 4. Within about 30 seconds each screen should show `Connected to crew-...` with the other device's id.
 5. Tap **Send severity op** on one device and check **Last received** on the other.
 
 What we have seen so far:
 
 - A Galaxy S25 Ultra and a Galaxy Tab S8+ connect and send a severity change to each other.
-- A Galaxy S25 Ultra and a Galaxy S24 did not connect when they were not close to each other.
-- A Galaxy S24 and a Galaxy S25 Ultra, connected in clear line of sight, kept exchanging severity changes while the S24 walked away, until about 50 to 60 metres (an estimate, not a measurement).
+- A Galaxy S25 Ultra and a Galaxy S24 did not connect when they were far apart.
+- Once connected in clear line of sight, the S24 and the S25 Ultra kept exchanging severity changes while the S24 walked away. This went on until the phones were ~50-60m apart. This is an estimate, not a measurement.
+- On the **Experiment** tab, the S24 sent 10,000 events to the S25 Ultra at ~1m, ~10m and ~20m. All events arrived each time, in ~0.8-1.2 s.
 - Two emulators connect and exchange operations in both directions. A real phone and an emulator do not find each other, because the emulator radios are virtual.
 
 ## Tests
