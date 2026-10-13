@@ -126,9 +126,9 @@ To show how the system works in practice, this section presents four scenarios a
 
 Not every requirement shapes the architecture. We treat one as architecturally significant if it needs dedicated components, is expensive to change later, or affects future functions [<a href="#7">7</a>]. Six requirements meet at least one of these.
 
-- **R1, working without a connection.** A tablet can store new reports, update existing ones, and sync in P2P mode while offline. Each tablet keeps its own copy of the record instead of reading one from a server. This is also the hardest requirement to add later, assuming a live connection first would mean designing the system twice.
+- **R1, working without a connection.** A tablet can store new reports, update existing ones, and sync in P2P mode while offline. Each tablet keeps its own copy of the record, so it can work without reading from a server. This is also the hardest requirement to add later, assuming a live connection first would mean designing the system twice.
 
-- **R2, syncing with the central server.** When a tablet has a connection, it syncs on its own, sending its reports and receiving updates and assignments for its zones. Unlike P2P mode, this happens without anyone asking, so a component has to notice the connection and act on it.
+- **R2, syncing with the central server.** When a tablet has a connection, it syncs on its own, sending its reports and receiving updates and assignments for its zones. This happens without anyone asking, so a component has to notice the connection and act on it.
 
 - **R3, single sync behaviour.** After two peers sync, both hold the same record, and the central server counts as a peer too. One behaviour covers every pair, and a tablet passes on what it received as readily as what its own crew recorded, so a report can reach a crew that never met its author.
 
@@ -140,7 +140,7 @@ Not every requirement shapes the architecture. We treat one as architecturally s
 
 ### 2.7 Quality Attributes
 
-Several quality attributes were prioritised while designing the system. Each is a property of how the system behaves, not a function it offers, and each has a target the proof of concept can measure.
+Several quality attributes were prioritised while designing the system. Each describes how the system behaves, and each has a target the proof of concept can measure.
 
 - **Availability under partition.** Nothing is withdrawn when the connection goes. A tablet offers what it offers when connected for a full twelve-hour operational period, even offline. A tablet that needs the server for its map is useless below a ridge, which is what R1 pays for.
 
@@ -162,14 +162,14 @@ The **minimum viable product** puts the system in the hands of one fire service,
 
 The **beta** widens the same fire service from one crew to a whole incident: every crew, their division leaders, and command staff reading the incident picture. Where the MVP shows the system works for the crew that carries it, the beta shows it holds under a full operational period of reports at once, the first point zones and sync face real load.
 
-**Release 1.0** adds mutual aid across agencies and a reworked interface on both fronts: the tablet map crews use, and a web client for command staff at a desk. Two fire services on the same fire each run their own server, and reports from one agency's tablets must reach the other's crews, whose devices may be on a different version. This is where the system starts serving an incident rather than one organisation, and where licensing and support begin.
+**Release 1.0** adds mutual aid across agencies and a reworked interface on both fronts: the tablet map crews use, and a web client for command staff at a desk. Two fire services on the same fire each run their own server, and reports from one agency's tablets must reach the other's crews, whose devices may be on a different version. From here the system serves a whole incident across organisations, and licensing and support begin.
 
 <figure>
   <img title="" src="../report/figures/roadmap.png" alt="delivery roadmap diagram">
   <figcaption><em>Figure 4: Delivery roadmap. Only the proof of concept is built during this course.</em></figcaption>
 </figure>
 
-Fire services will not hand live crew positions to a server we run, so the system is sold as a licence deployed on the customer's own infrastructure. Of the models in [<a href="#7">7</a>] this is a subscription, but an annual one for self-hosted software, matching how self-hosted enterprise products have moved from perpetual licences to yearly terms [<a href="#10">10</a>]. It is priced per agency, not per tablet, since tablet count swings with the season and with mutual aid. The MVP is free, so a fire service can run it for one season without procurement, and the licence begins at release 1.0. Annual support is priced as a percentage of the licence fee, in line with common industry practice [<a href="#9">9</a>]. Deployment and integration are charged separately.
+Fire services will not hand live crew positions to a server we run, so the system is sold as a licence deployed on the customer's own infrastructure. Of the models in [<a href="#7">7</a>] this is a subscription, but an annual one for self-hosted software, matching how self-hosted enterprise products have moved from perpetual licences to yearly terms [<a href="#10">10</a>]. It is priced per agency, since the number of tablets swings with the season and with mutual aid. The MVP is free, so a fire service can run it for one season without procurement, and the licence begins at release 1.0. Annual support is priced as a percentage of the licence fee, in line with common industry practice [<a href="#9">9</a>]. Deployment and integration are charged separately.
 
 Every agency hosts its own server and upgrades on its own schedule, so release 1.0's mutual aid has to work between different versions, which falls on R3. Crews, command staff, and fire services all gain from the system.
 
@@ -244,15 +244,15 @@ Concurrent resolutions of the same Tier B conflict become a new conflict under t
 
 The container view opens up the Firefly box from the context view (Figure 1). Firefly runs as five parts, plus the merge code they share.
 
-- **Tablet app.** One per crew, held by the crew leader. It is a native Android app (Kotlin, Jetpack Compose), because it has to work for a whole shift with no connection and needs Bluetooth and WiFi for P2P mode. It keeps a full copy of the record in a local SQLite store and never needs the server to stay useful (R1).
+- **Tablet app.** One per crew, held by the crew leader. It is a native Android app (Kotlin, Jetpack Compose) because Firefly is offline first and cannot depend on a web connection to run. For the same reason it keeps a full copy of the record in a local SQLite store and never needs the server to stay useful (R1).
 - **Message broker.** NATS JetStream carries everything between the tablets and the server. Tablets publish their events on the `operation-events` stream, one subject per report (`events.operation.<reportId>`), and the server publishes merged reports on a second stream, under `report.<hexagon>.<reportId>`. JetStream keeps messages until they are read and ignores a message whose id it has already seen. That id is the event's dot, which means a tablet can resend after a sync was cut off without creating duplicates. Tablets reach it over cellular.
-- **ICP server.** A Spring Boot service on the machine at the Incident Command Post. It merges incoming events, works out which hexagon each report is in, assigns hexagons to tablets, and enrols new tablets.
+- **ICP server.** A Spring Boot service on the machine at the Incident Command Post. It merges incoming events, works out which zone each report is in, and assigns each tablet its zones based on its GPS position. Zones are cells of H3, a grid that divides the map into hexagons [<a href="#19">19</a>].
 - **Server store.** PostgreSQL, with the same logical schema as the tablet store: every event, plus the reports and incidents derived from them.
-- **Command web client.** A browser app for command staff at the ICP. It shows the whole incident instead of a few hexagons. It reads the same report stream as the tablets, subscribed to every hexagon (`report.>`), through NATS over WebSocket since a browser cannot open a plain NATS connection.
+- **Command web client.** A browser app for command staff at the ICP. It gives them an overview of the entire incident, so they can coordinate the response across crews. It reads the same report stream as the tablets, subscribed to every hexagon (`report.>`), through NATS over WebSocket since a browser cannot open a plain NATS connection.
 
 The merge code lives in a shared library, `core`, used by both the tablet app and the server. It runs inside both containers, and it is why both sides end up with the same record: they run the same code on the same events (R3).
 
-Everything between a tablet and the server goes through the broker, so a tablet can hand off its events even while the server is busy. The link between two tablets does not touch the ICP at all, P2P mode only needs both crew leaders to switch it on (R5).
+Everything between a tablet and the server goes through the broker, so a tablet can hand off its events even while the server is busy. Two tablets in P2P mode connect to each other directly, once both crew leaders switch it on (R5).
 
 <figure>
   <img title="" src="../report/figures/c4-container.png" alt="C4 container diagram">
@@ -261,7 +261,7 @@ Everything between a tablet and the server goes through the broker, so a tablet 
 
 ### 3.5 Component View
 
-Most of the logic sits in the tablet app and the ICP server, so those are the two we open up.
+The component view covers the tablet app and the ICP server, which hold most of the logic.
 
 **Tablet app** (Figure 8). The screens only talk to `ReportService`, the one way to change a report. It turns every change into an event, stamps it with the tablet's next dot and its causal context, and stores it together with the derived report in one transaction. A crash cannot leave the two out of step. The local store holds the events, the replica state (the tablet's id, next sequence number and causal context), and the derived reports. The sync client sends the events the broker has not acknowledged yet, and reads the reports for the tablet's hexagons. `P2pManager` finds the other tablet over Nearby Connections. Both hand what they receive to `ReportService`, which merges it with the merge library. An event from the server and one from another tablet take the same path.
 
@@ -277,12 +277,10 @@ Most of the logic sits in the tablet app and the ICP server, so those are the tw
   <figcaption><em>Figure 9: Components of the ICP server.</em></figcaption>
 </figure>
 
-Not all of this is built yet. The proof of concept has the screens, `ReportService`, the local store and `P2pManager` on the tablet, a sync client that sends single severity changes, and the event consumer with a `MergeService` that only logs on the server. The zone service, report publisher and the report stream are still to do, and so is enrolment, the tablet generates its own id for now. The command web client is not built either.
-
 
 ### 3.6 Code View
 
-The C4 code level would zoom into single classes. We skip it apart from Field Reporting, whose classes Figure 6 already shows. The rest maps one to one onto the components above and is easier to read in the repository than in a diagram.
+Figure 6 already gives the class level for Field Reporting, the core of the system. The other components are thin enough that a class diagram would add nothing the component view does not show, and one can be generated from the code if needed.
 
 ### 3.7 Runtime Views
 
@@ -302,14 +300,14 @@ We follow the scenarios from Section 2.5. The offline one is split in two, since
   <figcaption><em>Figure 11: Back into coverage.</em></figcaption>
 </figure>
 
-**Two crews meeting** (Figure 12). Alice and Bob both switch on P2P mode and their tablets connect over Nearby Connections. Each sends the events the other has not seen, which it can tell from the other's causal context, and both merge. Tier A fields like severity settle on their own. A Tier B field changed on both tablets keeps both values, shown with who made each and when. Once Alice and Bob agree, the choice goes out as a `RESOLVE_CONFLICT` event, which merges like any other.
+**Two crews meeting** (Figure 12). Alice and Bob both switch on P2P mode and their tablets connect over Nearby Connections. Each sends the events the other has not seen, which it can tell from the other's causal context, and both merge. Conflicts are then resolved as described in Section 3.3.
 
 <figure>
   <img title="" src="../report/figures/runtime-p2p.png" alt="P2P meeting sequence diagram">
   <figcaption><em>Figure 12: Two crews meeting in P2P mode.</em></figcaption>
 </figure>
 
-**Getting the reports for a zone** (Figure 13). A tablet publishes its position on `position.<deviceId>`. The zone service takes the hexagons within its radius, larger for division leaders, plus any hexagons assigned to it, and the report publisher sends the list on `assign.<deviceId>`. The tablet then requests `report.<hexagon>.*` for each hexagon, which returns the latest version of every report in it, and keeps reading those subjects for new ones. Since the server picks the hexagons, an assignment can change what a tablet sees without the tablet moving.
+**Getting the reports for a zone** (Figure 13). A tablet publishes its position on `position.<deviceId>`. The zone service uses H3 to take the hexagons within its radius, larger for division leaders, plus any hexagons assigned to it, and the report publisher sends the list on `assign.<deviceId>`. The tablet then requests `report.<hexagon>.*` for each hexagon, which returns the latest version of every report in it, and keeps reading those subjects for new ones. Since the server picks the hexagons, an assignment can change what a tablet sees without the tablet moving.
 
 <figure>
   <img title="" src="../report/figures/runtime-zones.png" alt="zone update sequence diagram">
@@ -318,7 +316,7 @@ We follow the scenarios from Section 2.5. The offline one is split in two, since
 
 ### 3.8 Deployment View
 
-Firefly does not run in the cloud (Section 2.2). The server side runs on one physical machine at the Incident Command Post: the broker, the ICP server and PostgreSQL, started together with Docker Compose. Tablets reach that machine over cellular when they have coverage and keep working offline when they do not. Command staff open the web client in a browser on a computer at the post, over the local network. Two tablets in P2P mode talk directly over Bluetooth or WiFi and never go through the ICP.
+Firefly runs at the incident itself (Section 2.2). The server side is one physical machine at the Incident Command Post, running the broker, the ICP server and PostgreSQL. Tablets reach that machine over cellular when they have coverage and keep working offline when they do not. Command staff open the web client in a browser on a computer at the post, over the local network.
 
 Tablets need Android 14 or newer, since the tablet store uses SQLite's STRICT tables, which Android only ships from version 14.
 
@@ -416,3 +414,5 @@ We used only Samsung devices. The walk was in clear line of sight, which is the 
 <a id="17">[17]</a> NATS, "Authenticating with an NKey." Docs.nats.io. https://docs.nats.io/running-a-nats-service/configuration/securing_nats/auth_intro/nkey_auth (accessed Oct. 11, 2026)
 
 <a id="18">[18]</a> Google, "Nearby Connections overview," Developers.google.com. https://developers.google.com/nearby/connections/overview (accessed Oct. 11, 2026)
+
+<a id="19">[19]</a> H3, "Introduction." H3geo.org. https://h3geo.org/docs/ (accessed Oct. 13, 2026)
