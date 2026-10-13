@@ -64,3 +64,32 @@ For my individual work, I looked into how to implement the database schema based
 * Individual work on the database schema design and implementation: 4h
 
 **Total: 10h**
+
+## Week 5 (28 September - 4 October 2026)
+
+On Tuesday, 29 September, we gave our peer review presentation. On Thursday, 1 October, we had another meeting with our TA, which took about 45 minutes. As in the previous weeks, I also went through the lecture slides at home.
+
+For my individual work, I finished the initial database schema that I had started in week 4 and opened a merge request for it. It consists of one migration for SQLite on the tablets and one for PostgreSQL on the server, which define the same tables in both databases: the events, the replica state with the device's sequence number and causal context, the incidents and reports derived from the events, and the field conflicts. I also added a few small types to the shared core module that match the schema, such as the event, the causal context, and the list of fields with their merge tier and policy. I kept the schema to what the proof of concept needs, so that the tablet storage and the merge logic could build on it.
+
+### Time spent
+
+* Peer review presentation (29 September): 1h
+* TA meeting (1 October): 0.75h
+* Lectures and slides at home: 2h
+* Individual work on the initial database schema: 6h
+
+**Total: 9.75h**
+
+## Week 6 (5 - 11 October 2026)
+
+On Friday, 9 October, we had a one-hour team meeting, followed by a 30-minute meeting with our TA, in which she went over her feedback with us.
+
+For my individual work, I worked on the merge-core branch. A teammate had rewritten the merge library to support all field types, which meant the device and server code had to move from the old severity-only operation to the new event-based model. I brought the branch up to date with master and resolved the conflicts, then fixed the code that no longer compiled against the new core, on the tablet, the server, and the experiments. I also changed how a record is created, so that a create event carries the record's immutable fields, such as the incident a report belongs to, and can optionally carry its first values. This makes sure an immutable field can only ever be set once.
+
+### Time spent
+
+* Team meeting (9 October): 1h
+* TA meeting about the feedback (9 October): 0.5h
+* Individual work on updating and fixing the merge-core branch: 6h
+
+**Total: 7.5h**
