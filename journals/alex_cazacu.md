@@ -64,3 +64,19 @@ Most important thing I did this week was to rewrite the merge library to support
 * ADR draft (2h)
 * Lecture & slides (2h)
 * Misc tasks (1h)
+
+Total: 11h
+
+### Week 6
+
+This week I finished the security ADR. I created the presentation for the TA meeting and met with the team on Friday to rehearse for the presentation and talk about future steps on the project. We fixed some issues with the device code. I also worked with a teammate to make the library compatible with the rest of the codebase. I also had a long meeting with a teammate in which we worked on CA3 and ran the experiments in the report. I then did some more of my own research into what experiments should we do for Swan.
+
+* Finalizing security ADR (2h)
+* Meeting Friday with team (1.5h)
+* Meeting with TA (0.5h)
+* CA3 meeting and running experiments (4h)
+* Own research into future experiments (2h)
+* Final touches for Heron release on the report (1h)
+* Sync with teammate for him to integrate my merge library in codebase (1h)
+
+Total: 12h
