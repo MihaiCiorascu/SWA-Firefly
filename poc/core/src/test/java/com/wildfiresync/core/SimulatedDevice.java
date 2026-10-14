@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.UUID;
 
 final class SimulatedDevice {
@@ -68,12 +69,24 @@ final class SimulatedDevice {
 
 	private Event author(RecordRef record, Event.Operation operation, Field field, String value,
 			Set<UUID> supersedes) {
+		CausalContext seen = context();
 		counter++;
 		Event event = new Event(new UUID(idPrefix, counter), record.id(), record.type(), operation,
-				field == null ? null : field.key(), value, actor, clock, new OpId(id, counter),
-				CausalContext.EMPTY, supersedes);
+				field == null ? null : field.key(), value, actor, clock, new OpId(id, counter), seen, supersedes);
 		receive(event);
 		return event;
+	}
+
+	/** Per node, the highest sequence number held with no gap before it, like the tablet keeps it. */
+	CausalContext context() {
+		Map<NodeId, Long> counters = new TreeMap<>();
+		log.keySet().stream().sorted().forEach(dot -> {
+			long held = counters.getOrDefault(dot.node(), 0L);
+			if (dot.seq() == held + 1) {
+				counters.put(dot.node(), dot.seq());
+			}
+		});
+		return new CausalContext(counters);
 	}
 
 	void receive(Event event) {

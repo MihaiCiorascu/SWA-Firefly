@@ -8,6 +8,7 @@ import com.wildfiresync.core.schema.CausalContext;
 import com.wildfiresync.core.schema.Event;
 import com.wildfiresync.core.schema.Field;
 import com.wildfiresync.core.schema.FieldValue;
+import com.wildfiresync.core.schema.FieldValues.IncidentStatus;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -20,6 +21,8 @@ import org.junit.jupiter.api.Test;
 class TierBTests {
 
 	private static final RecordRef REPORT = RecordRef.report(new UUID(7, 1));
+
+	private static final RecordRef INCIDENT = RecordRef.incident(new UUID(7, 2));
 
 	private SimulatedDevice alpha;
 
@@ -80,10 +83,39 @@ class TierBTests {
 
 
 	@Test
-	void aWriterWhoSawTheOtherValueStillCannotSupersedeItYet() {
+	void aWriterWhoSawTheOtherValueReplacesIt() {
 		alpha.set(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Fire crossed the ridge"));
 		bravo.receiveAll(alpha.log());
 		bravo.set(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Fire crossed the ridge, wind turning"));
+
+		reconnect();
+
+		for (SimulatedDevice device : List.of(alpha, bravo)) {
+			Resolution.Settled settled = assertInstanceOf(Resolution.Settled.class,
+					device.resolution(REPORT, Field.REPORT_DESCRIPTION).orElseThrow());
+			assertEquals(new FieldValue.Text("Fire crossed the ridge, wind turning"), settled.value());
+		}
+	}
+
+	@Test
+	void oneDeviceEditingTwiceNeverConflictsWithItself() {
+		alpha.set(INCIDENT, Field.INCIDENT_STATUS, new FieldValue.Status(IncidentStatus.ACTIVE));
+		alpha.set(INCIDENT, Field.INCIDENT_STATUS, new FieldValue.Status(IncidentStatus.CONTAINED));
+
+		reconnect();
+
+		Resolution.Settled settled = assertInstanceOf(Resolution.Settled.class,
+				bravo.resolution(INCIDENT, Field.INCIDENT_STATUS).orElseThrow());
+		assertEquals(new FieldValue.Status(IncidentStatus.CONTAINED), settled.value());
+	}
+
+	@Test
+	void aWriterThatMissedPartOfAnotherDevicesLogDoesNotReplaceWhatItMissed() {
+		alpha.set(REPORT, Field.REPORT_SEVERITY, new FieldValue.Num(3));
+		alpha.set(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Fire crossed the ridge"));
+		// bravo only got alpha's second event, so its context cannot claim it
+		bravo.receive(alpha.log().get(1));
+		bravo.set(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Evacuation route B blocked"));
 
 		reconnect();
 

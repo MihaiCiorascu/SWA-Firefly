@@ -89,6 +89,19 @@ class TierATests {
 	}
 
 	@Test
+	void aRenameByAWriterWhoSawTheOldNameWinsWhateverTheEventIds() {
+		bravo.set(INCIDENT, Field.INCIDENT_NAME, new FieldValue.Text("Ridge complex"));
+		alpha.receiveAll(bravo.log());
+		// alpha event ids sort below bravo ones, it still wins because it saw bravo's name
+		alpha.set(INCIDENT, Field.INCIDENT_NAME, new FieldValue.Text("Ridge fire"));
+
+		reconnect();
+
+		assertEquals(new FieldValue.Text("Ridge fire"), valueOn(bravo, INCIDENT, Field.INCIDENT_NAME));
+		assertEquals(valueOn(alpha, INCIDENT, Field.INCIDENT_NAME), valueOn(bravo, INCIDENT, Field.INCIDENT_NAME));
+	}
+
+	@Test
 	void theCreateSetsTheImmutableIncidentId() {
 		alpha.create(REPORT, Map.of(Field.REPORT_INCIDENT_ID, new FieldValue.Reference(INCIDENT.id())));
 

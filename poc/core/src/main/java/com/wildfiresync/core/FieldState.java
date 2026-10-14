@@ -48,7 +48,8 @@ public sealed interface FieldState permits FieldState.MaxValue, FieldState.Union
 
     /**
      * Every value written to the field, for IMMUTABLE, LARGEST_EVENT_ID and MANUAL policies, plus the event ids that a
-     * RESOLVE_CONFLICT settled. Both only grow, so the join stays a plain union.
+     * RESOLVE_CONFLICT settled. Both only grow, so the join stays a plain union, and which values are still current is
+     * worked out from them when reading.
      */
     record Candidates(Set<Candidate> values, Set<UUID> superseded) implements FieldState {
 
@@ -71,9 +72,13 @@ public sealed interface FieldState permits FieldState.MaxValue, FieldState.Union
             return new Candidates(union, settled);
         }
 
-        /** The values no resolution has settled yet */
+        /** The current values: not settled by a resolution, and not seen by the writer of another value. */
         public List<Candidate> ordered() {
-            return values.stream().filter(candidate -> !superseded.contains(candidate.eventId())).sorted().toList();
+            return values.stream()
+                    .filter(candidate -> !superseded.contains(candidate.eventId()))
+                    .filter(candidate -> values.stream().noneMatch(other -> other.replaces(candidate)))
+                    .sorted()
+                    .toList();
         }
 
         public List<Candidate> all() {
