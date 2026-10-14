@@ -84,8 +84,13 @@ public final class FieldValues {
 		if (parts.length != 2) {
 			throw new IllegalArgumentException("expected latitude,longitude");
 		}
-		return new FieldValue.Place(
-				new Location(Double.parseDouble(parts[0].trim()), Double.parseDouble(parts[1].trim())));
+		double latitude = Double.parseDouble(parts[0].trim());
+		double longitude = Double.parseDouble(parts[1].trim());
+		// NaN fails both checks too
+		if (!(latitude >= -90 && latitude <= 90) || !(longitude >= -180 && longitude <= 180)) {
+			throw new IllegalArgumentException("latitude must be within [-90, 90] and longitude within [-180, 180]");
+		}
+		return new FieldValue.Place(new Location(latitude, longitude));
 	}
 
 	private static String quote(String stored) {
