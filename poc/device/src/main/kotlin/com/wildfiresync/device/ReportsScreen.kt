@@ -27,7 +27,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.wildfiresync.core.RecordRef
 import com.wildfiresync.core.schema.Field
+import com.wildfiresync.core.schema.FieldValue
 import com.wildfiresync.device.storage.StoredReport
 import java.util.UUID
 import kotlin.math.roundToInt
@@ -53,18 +55,20 @@ fun ReportsScreen(viewModel: ReportsViewModel = viewModel()) {
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
-        Button(onClick = { viewModel.createReport(incident) }) {
+        Button(onClick = { runCatching { UUID.fromString(incident.trim()) }.onSuccess { viewModel.createReport(it) } }) {
             Text("New report")
         }
 
         state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
 
-        if (state.reports.isEmpty()) {
+        if (state.tablet.reports.isEmpty()) {
             Text("(no reports yet)")
         }
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(state.reports, key = { it.report }) { report ->
-                ReportCard(report, onSave = { viewModel.setSeverity(report.report, it) })
+            items(state.tablet.reports, key = { it.report }) { report ->
+                ReportCard(report, onSave = {
+                    viewModel.setField(RecordRef.report(report.report), Field.REPORT_SEVERITY, FieldValue.Num(it))
+                })
             }
         }
     }
