@@ -4,6 +4,9 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.wildfiresync.core.NodeId
+import com.wildfiresync.core.RecordRef
+import com.wildfiresync.core.schema.Field
+import com.wildfiresync.core.schema.FieldValue
 import com.wildfiresync.device.storage.LocalDatabase
 import com.wildfiresync.device.storage.ReplicaStateRepository
 import com.wildfiresync.device.storage.StoredReport
@@ -39,7 +42,7 @@ class ReportsViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun setSeverity(report: UUID, severity: Int) = onDb {
-        reports.setSeverity(report, severity)
+        reports.setField(RecordRef.report(report), Field.REPORT_SEVERITY, FieldValue.Num(severity))
     }
 
     private fun onDb(block: () -> Unit) {

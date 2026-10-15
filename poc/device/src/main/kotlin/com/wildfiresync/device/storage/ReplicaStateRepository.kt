@@ -40,6 +40,22 @@ class ReplicaStateRepository(private val database: LocalDatabase) {
         )
     }
 
+    /**
+     * takes in what this tablet holds after a sync. if a peer gave back dots of this tablet it had lost, the next
+     * sequence moves past them so a new event never reuses one
+     */
+    fun observe(held: CausalContext) {
+        val state = checkNotNull(find()) { "tablet is not enrolled" }
+        val counters = state.causalContext.counters().toMutableMap()
+        held.counters().forEach { (node, counter) -> counters.merge(node, counter, ::maxOf) }
+        val next = maxOf(state.nextSequence, (counters[state.node] ?: 0L) + 1)
+
+        database.db.execSQL(
+            "UPDATE replica_state SET next_sequence = ?, causal_context = ?",
+            arrayOf<Any>(next, Json.write(CausalContext(counters))),
+        )
+    }
+
 }
 
 data class ReplicaState(val node: NodeId, val nextSequence: Long, val causalContext: CausalContext) {
