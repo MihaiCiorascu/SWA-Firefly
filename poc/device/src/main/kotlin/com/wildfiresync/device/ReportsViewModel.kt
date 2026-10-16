@@ -7,6 +7,7 @@ import com.wildfiresync.core.RecordRef
 import com.wildfiresync.core.schema.Event
 import com.wildfiresync.core.schema.Field
 import com.wildfiresync.core.schema.FieldValue
+import com.wildfiresync.core.schema.FieldValues
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -34,6 +35,12 @@ class ReportsViewModel(application: Application) : AndroidViewModel(application)
     fun setField(record: RecordRef, field: Field, value: FieldValue) = write { setField(record, field, value) }
 
     fun resolveConflict(record: RecordRef, field: Field, value: FieldValue) = write { resolveConflict(record, field, value) }
+
+    /** typed in by hand, the merge core's parser says what is wrong with it */
+    fun setField(record: RecordRef, field: Field, text: String) = write { setField(record, field, FieldValues.parse(field, text.trim())) }
+
+    fun resolveConflict(record: RecordRef, field: Field, text: String) =
+        write { resolveConflict(record, field, FieldValues.parse(field, text.trim())) }
 
     private fun write(block: ReportService.() -> Event) {
         viewModelScope.launch {
