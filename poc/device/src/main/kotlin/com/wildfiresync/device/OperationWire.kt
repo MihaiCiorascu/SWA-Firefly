@@ -12,7 +12,12 @@ import org.json.JSONObject
 // (core's EventMessage), so a payload read here matches what the server consumes.
 object OperationWire {
 
-    fun encode(event: Event): ByteArray {
+    fun encode(event: Event): ByteArray = toJson(event).toString().toByteArray(Charsets.UTF_8)
+
+    /** throws when the bytes are not an event or the merge core refuses it */
+    fun decode(bytes: ByteArray): Event = fromJson(JSONObject(String(bytes, Charsets.UTF_8))).also(MergeCore::validate)
+
+    fun toJson(event: Event): JSONObject {
         val message = EventMessage.of(event)
         return JSONObject()
             .put("eventId", message.eventId().toString())
@@ -27,15 +32,13 @@ object OperationWire {
             .put("seq", message.seq())
             .put("context", JSONObject(message.context()))
             .put("supersedes", JSONArray(message.supersedes().map { it.toString() }.sorted()))
-            .toString()
-            .toByteArray(Charsets.UTF_8)
     }
 
-    fun decode(bytes: ByteArray): Event {
-        val json = JSONObject(String(bytes, Charsets.UTF_8))
+    /** reads the event without asking the merge core, whoever stores it validates */
+    fun fromJson(json: JSONObject): Event {
         val context = json.getJSONObject("context")
         val supersedes = json.getJSONArray("supersedes")
-        val event = EventMessage(
+        return EventMessage(
             UUID.fromString(json.getString("eventId")),
             UUID.fromString(json.getString("recordId")),
             Event.RecordType.valueOf(json.getString("recordType")),
@@ -49,8 +52,6 @@ object OperationWire {
             context.keys().asSequence().associateWith { context.getLong(it) },
             (0 until supersedes.length()).map { UUID.fromString(supersedes.getString(it)) }.toSet(),
         ).toEvent()
-        MergeCore.validate(event)
-        return event
     }
 
     private fun JSONObject.nullableString(key: String): String? = if (isNull(key)) null else getString(key)

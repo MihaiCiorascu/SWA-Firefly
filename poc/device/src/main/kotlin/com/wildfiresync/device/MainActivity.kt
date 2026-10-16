@@ -3,6 +3,7 @@ package com.wildfiresync.device
 import android.Manifest
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -20,32 +21,24 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.wildfiresync.core.NodeId
-import com.wildfiresync.core.OpId
-import com.wildfiresync.core.schema.CausalContext
-import com.wildfiresync.core.schema.Event
-import com.wildfiresync.core.schema.Field
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.wildfiresync.device.experiment.ExperimentScreen
 import com.wildfiresync.device.experiment.ExperimentUi
 import com.wildfiresync.device.experiment.createExperiment
-import java.time.Instant
-import java.util.UUID
-import kotlin.random.Random
-
-private val DEMO_REPORT: UUID = UUID.fromString("00000000-0000-0000-0000-000000000001")
 
 class MainActivity : ComponentActivity() {
 
     private lateinit var p2pManager: P2pManager
+    private lateinit var peerSync: PeerSync
     private lateinit var experiment: ExperimentUi
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -53,16 +46,31 @@ class MainActivity : ComponentActivity() {
 
         val localName = DeviceIdentity.get(applicationContext)
         p2pManager = P2pManager(applicationContext, localName)
+        peerSync = PeerSync(
+            TabletStore.get(applicationContext),
+            object : PeerSync.Transport {
+                override fun peers(): List<String> = p2pManager.connectedPeers.toList()
+                override fun send(peer: String, bytes: ByteArray): Boolean = p2pManager.send(peer, bytes)
+            },
+            lifecycleScope,
+        )
+        p2pManager.onPeerConnected = peerSync::onConnected
+        p2pManager.onPayload = { peer, bytes ->
+            if (!peerSync.handle(peer, bytes)) {
+                Log.w("MainActivity", "ignored a payload from $peer that is not a sync message")
+            }
+        }
         experiment = createExperiment(applicationContext, localName, p2pManager)
 
         setContent {
             MaterialTheme {
-                TabletApp(localName = localName, p2pManager = p2pManager, experiment = experiment)
+                TabletApp(localName = localName, p2pManager = p2pManager, peerSync = peerSync, experiment = experiment)
             }
         }
     }
 
     override fun onDestroy() {
+        peerSync.close()
         p2pManager.stop()
         experiment.close()
         super.onDestroy()
@@ -77,7 +85,7 @@ private enum class Screen(val label: String) {
 }
 
 @Composable
-private fun TabletApp(localName: String, p2pManager: P2pManager, experiment: ExperimentUi) {
+private fun TabletApp(localName: String, p2pManager: P2pManager, peerSync: PeerSync, experiment: ExperimentUi) {
     var screen by rememberSaveable { mutableStateOf(Screen.REPORTS) }
 
     Scaffold(
@@ -93,7 +101,7 @@ private fun TabletApp(localName: String, p2pManager: P2pManager, experiment: Exp
             when (screen) {
                 Screen.REPORTS -> ReportsScreen()
                 Screen.SERVER -> ServerScreen()
-                Screen.P2P -> P2pScreen(localName = localName, manager = p2pManager)
+                Screen.P2P -> P2pScreen(localName = localName, manager = p2pManager, sync = peerSync)
                 Screen.EXPERIMENT -> ExperimentScreen(
                     manager = p2pManager,
                     runner = experiment.runner,
@@ -134,23 +142,10 @@ private fun requiredPermissions(): Array<String> {
 }
 
 @Composable
-fun P2pScreen(localName: String, manager: P2pManager) {
+fun P2pScreen(localName: String, manager: P2pManager, sync: PeerSync, viewModel: ReportsViewModel = viewModel()) {
     var started by remember { mutableStateOf(false) }
-    var nextSeq by remember { mutableLongStateOf(1L) }
-    var lastSent by remember { mutableStateOf("") }
-    var lastReceived by remember { mutableStateOf("") }
-
-    // Throwaway demo: a real consumer would hand the decoded operation to the merge
-    // library and the local store instead of just showing it.
-    LaunchedEffect(manager) {
-        manager.onPayload = { peer, bytes ->
-            lastReceived = try {
-                "${OperationWire.decode(bytes)} from $peer"
-            } catch (e: Exception) {
-                "undecodable payload from $peer (${e.message})"
-            }
-        }
-    }
+    val summaries by sync.summaries.collectAsStateWithLifecycle()
+    val state by viewModel.state.collectAsStateWithLifecycle()
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -190,37 +185,24 @@ fun P2pScreen(localName: String, manager: P2pManager) {
             manager.connectedPeers.forEach { peer -> Text("- $peer") }
         }
 
-        Button(
-            onClick = {
-                val severity = Field.REPORT_SEVERITY.range().orElseThrow()
-                val event = Event(
-                    UUID.randomUUID(),
-                    DEMO_REPORT,
-                    Event.RecordType.REPORT,
-                    Event.Operation.SET_FIELD,
-                    Field.REPORT_SEVERITY.key(),
-                    Random.nextInt(severity.min(), severity.max() + 1).toString(),
-                    localName,
-                    Instant.now(),
-                    OpId(NodeId(localName), nextSeq),
-                    CausalContext.EMPTY,
-                    emptySet(),
-                )
-                if (manager.send(OperationWire.encode(event))) {
-                    lastSent = "$event"
-                    nextSeq += 1
-                }
-            },
-            enabled = manager.connectedPeers.isNotEmpty()
-        ) {
-            Text("Send severity op")
+        // what came in and out, so both crew leaders see the sync happened
+        Text("Sync:", style = MaterialTheme.typography.titleSmall)
+        if (summaries.isEmpty()) {
+            Text("(no sync yet, it starts by itself once a peer connects)")
         }
-
-        if (lastSent.isNotEmpty()) {
-            Text("Last sent: $lastSent")
+        summaries.values.forEach { summary ->
+            Text(
+                "${summary.peer}: sent ${summary.sent} events, received ${summary.received} new" +
+                    " (${summary.duplicates} already held, ${summary.rejected} refused)",
+            )
+            summary.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         }
-        if (lastReceived.isNotEmpty()) {
-            Text("Last received: $lastReceived")
+        val open = state.tablet.conflicts.values.sumOf { it.size }
+        if (open > 0) {
+            Text(
+                "$open field(s) in conflict, settle them on the Incidents and Reports tabs",
+                color = MaterialTheme.colorScheme.error,
+            )
         }
     }
 }
