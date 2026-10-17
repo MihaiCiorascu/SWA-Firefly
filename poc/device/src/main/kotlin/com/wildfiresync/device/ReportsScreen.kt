@@ -89,7 +89,7 @@ private fun NewReport(incidents: List<StoredIncident>, onCreate: (UUID, Map<Fiel
         return
     }
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Box {
+        Box(modifier = Modifier.weight(1f)) {
             OutlinedButton(onClick = { open = true }) {
                 Text(incident?.let { "Incident: ${it.name ?: it.incident}" } ?: "Pick an incident")
             }
@@ -105,12 +105,6 @@ private fun NewReport(incidents: List<StoredIncident>, onCreate: (UUID, Map<Fiel
                 }
             }
         }
-        OutlinedTextField(
-            value = description,
-            onValueChange = { description = it.take(MAX_TEXT_LENGTH) },
-            label = { Text("Description (optional)") },
-            modifier = Modifier.weight(1f),
-        )
         Button(
             onClick = {
                 val values = if (description.isBlank()) emptyMap()
@@ -123,6 +117,12 @@ private fun NewReport(incidents: List<StoredIncident>, onCreate: (UUID, Map<Fiel
             Text("New report")
         }
     }
+    OutlinedTextField(
+        value = description,
+        onValueChange = { description = it.take(MAX_TEXT_LENGTH) },
+        label = { Text("Description (optional)") },
+        modifier = Modifier.fillMaxWidth(),
+    )
 }
 
 @Composable
@@ -191,9 +191,8 @@ private fun ReportEditor(report: StoredReport, record: RecordRef, viewModel: Rep
         ReportType.entries.forEach { type ->
             FilterChip(
                 selected = type in report.types,
-                onClick = { viewModel.setField(record, Field.REPORT_TYPE, FieldValue.Types.of(type)) },
+                onClick = { if (type !in report.types) viewModel.setField(record, Field.REPORT_TYPE, FieldValue.Types.of(type)) },
                 label = { Text(type.name) },
-                enabled = type !in report.types,
             )
         }
     }

@@ -106,9 +106,8 @@ private fun IncidentCard(incident: StoredIncident, conflicts: Map<Field, List<Ca
                 IncidentStatus.entries.forEach { status ->
                     FilterChip(
                         selected = incident.status == status,
-                        onClick = { viewModel.setField(record, Field.INCIDENT_STATUS, FieldValue.Status(status)) },
+                        onClick = { if (incident.status != status) viewModel.setField(record, Field.INCIDENT_STATUS, FieldValue.Status(status)) },
                         label = { Text(status.name) },
-                        enabled = incident.status != status,
                     )
                 }
             }

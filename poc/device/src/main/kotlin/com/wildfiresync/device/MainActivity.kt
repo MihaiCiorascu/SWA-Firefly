@@ -15,7 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
@@ -91,7 +91,7 @@ private fun TabletApp(localName: String, p2pManager: P2pManager, peerSync: PeerS
 
     Scaffold(
         topBar = {
-            PrimaryTabRow(selectedTabIndex = screen.ordinal, modifier = Modifier.statusBarsPadding()) {
+            PrimaryScrollableTabRow(selectedTabIndex = screen.ordinal, modifier = Modifier.statusBarsPadding(), edgePadding = 0.dp) {
                 Screen.entries.forEach {
                     Tab(selected = screen == it, onClick = { screen = it }, text = { Text(it.label) })
                 }
