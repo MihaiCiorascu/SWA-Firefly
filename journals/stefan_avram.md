@@ -99,3 +99,22 @@ hours:
 - syncing the architecture chapter with the implementation, title, table of contents, web client, wording (sun 11 oct): 3.5h
 
 total: 20h
+
+## W7 (12 - 18 oct)
+
+On Monday and Tuesday I reworked the CA1 part of the report after review: I trimmed the deployment view, reworded the contrasts in the function sections and reworked the container, component, code and runtime views. On Wednesday I worked on the merge core: RESOLVE_CONFLICT now settles the candidates it supersedes, locations off the map are rejected and a value can replace the values its writer had seen.
+
+From Thursday to Sunday I worked on the tablet app. Reports, incidents and conflicts are now built from the merge core, and the screens and P2P share one store, so two tablets sync and merge over P2P. I added an incidents tab, editors for every report field and settling conflicts, where only the values the crew leader was shown get settled. The tablet now sends its real events to the server, and the report form and tabs fit on a phone screen. I also updated the docs for the tablet app.
+
+On Saturday we had a team meeting to plan the next steps (resilience experiment, report feedback, DVVs, the server-tablet link, merge edge cases and the final presentation).
+
+hours:
+
+- reworking the container, component, code, runtime and deployment views after review (mon 12 - tue 13 oct): 4h
+- merge core: RESOLVE_CONFLICT, off-map locations, replacing seen values (wed 14 oct): 5h
+- tablet app on the merge core, shared store, p2p sync and merge (thu 15 - fri 16 oct): 7h
+- incidents tab, report field editors, settling conflicts, sending real events to the server, phone layout (fri 16 - sun 18 oct): 6h
+- docs for the tablet app (sun 18 oct): 1h
+- team meeting (sat 17 oct): 2h
+
+total: 25h
