@@ -39,8 +39,10 @@ class PeerSync(private val store: TabletStore, private val transport: Transport,
     private val _summaries = MutableStateFlow<Map<String, Summary>>(emptyMap())
     val summaries: StateFlow<Map<String, Summary>> = _summaries.asStateFlow()
 
+    private val push: (Event) -> Unit = { event -> scope.launch { pass(listOf(event), from = null) } }
+
     init {
-        store.onWritten = { event -> scope.launch { pass(listOf(event), from = null) } }
+        store.onWritten = push
     }
 
     fun onConnected(peer: String) {
@@ -73,7 +75,8 @@ class PeerSync(private val store: TabletStore, private val transport: Transport,
     }
 
     fun close() {
-        store.onWritten = null
+        // a newer activity may already have hooked up its own
+        if (store.onWritten === push) store.onWritten = null
     }
 
     private fun pass(events: List<Event>, from: String?) {

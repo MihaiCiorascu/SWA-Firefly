@@ -34,13 +34,14 @@ class ReportsViewModel(application: Application) : AndroidViewModel(application)
 
     fun setField(record: RecordRef, field: Field, value: FieldValue) = write { setField(record, field, value) }
 
-    fun resolveConflict(record: RecordRef, field: Field, value: FieldValue) = write { resolveConflict(record, field, value) }
+    fun resolveConflict(record: RecordRef, field: Field, value: FieldValue, seen: Set<UUID>) =
+        write { resolveConflict(record, field, value, seen) }
 
     /** typed in by hand, the merge core's parser says what is wrong with it */
     fun setField(record: RecordRef, field: Field, text: String) = write { setField(record, field, FieldValues.parse(field, text.trim())) }
 
-    fun resolveConflict(record: RecordRef, field: Field, text: String) =
-        write { resolveConflict(record, field, FieldValues.parse(field, text.trim())) }
+    fun resolveConflict(record: RecordRef, field: Field, text: String, seen: Set<UUID>) =
+        write { resolveConflict(record, field, FieldValues.parse(field, text.trim()), seen) }
 
     private fun write(block: ReportService.() -> Event) {
         viewModelScope.launch {

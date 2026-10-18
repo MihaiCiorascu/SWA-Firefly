@@ -170,8 +170,8 @@ private fun ReportCard(
                 ConflictCard(
                     field,
                     candidates,
-                    onKeep = { viewModel.resolveConflict(record, field, it) },
-                    onAgree = { viewModel.resolveConflict(record, field, it) },
+                    onKeep = { value, seen -> viewModel.resolveConflict(record, field, value, seen) },
+                    onAgree = { text, seen -> viewModel.resolveConflict(record, field, text, seen) },
                 )
             }
         }

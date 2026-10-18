@@ -10,7 +10,6 @@ import java.util.UUID
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.joinAll
@@ -156,8 +155,11 @@ class PeerSyncTest {
         network.connect("tablet-a", "tablet-b")
         settle()
 
-        assertTrue(bravo.state.value.conflicts.getValue(report).containsKey(Field.REPORT_DESCRIPTION))
-        bravo.write { resolveConflict(RecordRef.report(report), Field.REPORT_DESCRIPTION, FieldValue.Text("Ridge crossed, route B blocked")) }
+        val shown = bravo.state.value.conflicts.getValue(report).getValue(Field.REPORT_DESCRIPTION).map { it.eventId() }.toSet()
+        assertEquals(2, shown.size)
+        bravo.write {
+            resolveConflict(RecordRef.report(report), Field.REPORT_DESCRIPTION, FieldValue.Text("Ridge crossed, route B blocked"), shown)
+        }
         settle()
 
         assertEquals("Ridge crossed, route B blocked", alpha.state.value.reports.single().description)

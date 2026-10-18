@@ -205,7 +205,8 @@ class ReportServiceTest {
         assertEquals(listOf("tablet-a", "tablet-b"), candidates.map { it.actorId() }.sorted())
         assertEquals(reports.conflicts(), bravo.conflicts())
 
-        val resolution = bravo.resolveConflict(RecordRef.report(report), Field.REPORT_DESCRIPTION, FieldValue.Text("Ridge crossed, route B blocked"))
+        val shown = candidates.map { it.eventId() }.toSet()
+        val resolution = bravo.resolveConflict(RecordRef.report(report), Field.REPORT_DESCRIPTION, FieldValue.Text("Ridge crossed, route B blocked"), shown)
         exchange(reports, bravo)
 
         assertEquals(candidates.map { it.eventId() }.toSet(), resolution.supersedes())
@@ -249,8 +250,30 @@ class ReportServiceTest {
         val report = reports.newReport()
 
         assertFailsWith<IllegalArgumentException> {
-            reports.resolveConflict(RecordRef.report(report), Field.REPORT_DESCRIPTION, FieldValue.Text("x"))
+            reports.resolveConflict(RecordRef.report(report), Field.REPORT_DESCRIPTION, FieldValue.Text("x"), emptySet())
         }
+    }
+
+    @Test
+    fun `a resolution is refused when a new value came in after the crew leaders looked`() {
+        val bravo = tablet(NodeId("tablet-b"))
+        val charlie = tablet(NodeId("tablet-c"))
+        val report = reports.newReport()
+        exchange(reports, bravo)
+        exchange(reports, charlie)
+        reports.set(report, Field.REPORT_DESCRIPTION, FieldValue.Text("Fire crossed the ridge"))
+        bravo.set(report, Field.REPORT_DESCRIPTION, FieldValue.Text("Evacuation route B blocked"))
+        charlie.set(report, Field.REPORT_DESCRIPTION, FieldValue.Text("Wind turning north"))
+        exchange(reports, bravo)
+        val shown = reports.conflicts().getValue(report).getValue(Field.REPORT_DESCRIPTION).map { it.eventId() }.toSet()
+
+        // charlie's value arrives before the crew leader taps
+        exchange(reports, charlie)
+
+        assertFailsWith<IllegalArgumentException> {
+            reports.resolveConflict(RecordRef.report(report), Field.REPORT_DESCRIPTION, FieldValue.Text("Ridge crossed"), shown)
+        }
+        assertEquals(3, reports.conflicts().getValue(report).getValue(Field.REPORT_DESCRIPTION).size)
     }
 
     @Test

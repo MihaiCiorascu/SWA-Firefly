@@ -23,6 +23,7 @@ import com.wildfiresync.core.schema.Field
 import com.wildfiresync.core.schema.FieldValue
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.UUID
 
 private val WHEN = DateTimeFormatter.ofPattern("d MMM HH:mm").withZone(ZoneId.systemDefault())
 
@@ -41,7 +42,14 @@ fun show(value: FieldValue): String = when (value) {
  * one, or for text agree on new wording, and that settles it on every tablet
  */
 @Composable
-fun ConflictCard(field: Field, candidates: List<Candidate>, onKeep: (FieldValue) -> Unit, onAgree: (String) -> Unit) {
+fun ConflictCard(
+    field: Field,
+    candidates: List<Candidate>,
+    onKeep: (FieldValue, Set<UUID>) -> Unit,
+    onAgree: (String, Set<UUID>) -> Unit,
+) {
+    // what the crew leaders were shown, the store refuses the resolution if it changed since
+    val seen = candidates.map { it.eventId() }.toSet()
     OutlinedCard(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text("${field.key()} is in conflict", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.titleSmall)
@@ -54,7 +62,7 @@ fun ConflictCard(field: Field, candidates: List<Candidate>, onKeep: (FieldValue)
                             style = MaterialTheme.typography.bodySmall,
                         )
                     }
-                    TextButton(onClick = { onKeep(candidate.value()) }) {
+                    TextButton(onClick = { onKeep(candidate.value(), seen) }) {
                         Text("Keep this")
                     }
                 }
@@ -68,7 +76,7 @@ fun ConflictCard(field: Field, candidates: List<Candidate>, onKeep: (FieldValue)
                         label = { Text("Agreed wording") },
                         modifier = Modifier.weight(1f),
                     )
-                    TextButton(onClick = { onAgree(agreed) }, enabled = agreed.isNotBlank()) {
+                    TextButton(onClick = { onAgree(agreed, seen) }, enabled = agreed.isNotBlank()) {
                         Text("Resolve")
                     }
                 }
