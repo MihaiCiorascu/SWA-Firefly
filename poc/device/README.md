@@ -1,14 +1,21 @@
 # Tablet app
 
-The android app for the tablet, three tabs:
+The android app for the tablet, five tabs:
 
-- Reports: create a report and set its severity. saved in the tablet's sqlite db as events
-  (schema in `src/main/assets/db/migration/sqlite`, same as the server's)
-- Server: send a severity change (a `SET_FIELD` event) to NATS, the server merges it. the
-  report id is a UUID. on the emulator the docker-compose NATS is at `nats://10.0.2.2:4222`
-- P2P: two Android devices find each other over Google Nearby Connections, connect, and
-  exchange a severity change event as JSON (same fields as core's `EventMessage`).
-  The transport sends raw bytes, merging what comes in is not done yet.
+- Incidents: create an incident, rename it, set its status
+- Reports: create a report for an incident and edit every field (types, location, severity,
+  description). every change is saved in the tablet's sqlite db as an event (schema in
+  `src/main/assets/db/migration/sqlite`, same as the server's), and the reports, incidents and
+  conflicts tables are rebuilt from the events with core's `MergeCore`. a field two crews wrote
+  without knowing about each other shows both values with who wrote them and when, **Keep this**
+  or an agreed wording sends a `RESOLVE_CONFLICT` that settles it on every tablet
+- Server: send every event the tablet holds to NATS, the broker drops what it already has.
+  on the emulator the docker-compose NATS is at `nats://10.0.2.2:4222`
+- P2P: two Android devices find each other over Google Nearby Connections and sync by
+  themselves: each sends its causal context, gets back the events it misses, and merges them.
+  later changes are passed on right away, also to a third tablet. the tab shows what went in
+  and out and how many fields are in conflict
+- Experiment: the P2P transfer experiment of the report
 
 Unit tests: `./gradlew :device:testDebugUnitTest`, the db ones run on Robolectric.
 
@@ -21,7 +28,8 @@ Unit tests: `./gradlew :device:testDebugUnitTest`, the db ones run on Robolectri
 4. Open the app on both devices, tap **Start P2P** and allow every permission prompt (nearby
    devices, location).
 5. After about 30 seconds each screen should show `Connected to crew-...` and the id of the other
-   device. Tap **Send severity op** on one device and look at **Last received** on the other.
+   device, and the sync line shows how many events went each way. The Incidents and Reports tabs
+   now show the same records on both. A change made on one device shows up on the other.
 
 ## Status
 

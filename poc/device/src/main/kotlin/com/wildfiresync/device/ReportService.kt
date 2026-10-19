@@ -61,19 +61,16 @@ class ReportService(private val database: LocalDatabase, private val clock: Cloc
     }
 
     /**
-     * settles the field with the value the crew leaders agreed on. the causal context does the settling, it covers
-     * every candidate this tablet holds without a gap. supersedes only names the candidates that were shown
+     * settles the candidates the crew leaders looked at with the value they agreed on. the causal context does the
+     * settling and it covers everything the tablet holds without a gap, so this is refused when the conflict changed
+     * since, otherwise a value that just came in from another tablet is settled without anyone seeing it. supersedes
+     * only names the candidates that were shown
      */
-    fun resolveConflict(record: RecordRef, field: Field, value: FieldValue): Event = database.transaction {
-        val candidates = conflicts.findAll()[record.id()]?.get(field)
+    fun resolveConflict(record: RecordRef, field: Field, value: FieldValue, seen: Set<UUID>): Event = database.transaction {
+        val candidates = conflicts.findAll()[record.id()]?.get(field)?.map { it.eventId() }?.toSet()
         require(!candidates.isNullOrEmpty()) { "$field of $record is not in conflict" }
-        write(
-            record,
-            Event.Operation.RESOLVE_CONFLICT,
-            field.key(),
-            FieldValues.format(checked(value)),
-            candidates.map { it.eventId() }.toSet(),
-        )
+        require(candidates == seen) { "the ${field.key()} conflict changed in the meantime, check the values again" }
+        write(record, Event.Operation.RESOLVE_CONFLICT, field.key(), FieldValues.format(checked(value)), candidates)
     }
 
     /** stores the events it does not hold yet. an event the merge core refuses is counted and dropped */

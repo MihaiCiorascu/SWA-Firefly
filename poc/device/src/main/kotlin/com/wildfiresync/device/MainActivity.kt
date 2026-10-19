@@ -15,7 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
@@ -78,6 +78,7 @@ class MainActivity : ComponentActivity() {
 }
 
 private enum class Screen(val label: String) {
+    INCIDENTS("Incidents"),
     REPORTS("Reports"),
     SERVER("Server"),
     P2P("P2P"),
@@ -90,7 +91,7 @@ private fun TabletApp(localName: String, p2pManager: P2pManager, peerSync: PeerS
 
     Scaffold(
         topBar = {
-            PrimaryTabRow(selectedTabIndex = screen.ordinal, modifier = Modifier.statusBarsPadding()) {
+            PrimaryScrollableTabRow(selectedTabIndex = screen.ordinal, modifier = Modifier.statusBarsPadding(), edgePadding = 0.dp) {
                 Screen.entries.forEach {
                     Tab(selected = screen == it, onClick = { screen = it }, text = { Text(it.label) })
                 }
@@ -99,6 +100,7 @@ private fun TabletApp(localName: String, p2pManager: P2pManager, peerSync: PeerS
     ) { padding ->
         Surface(modifier = Modifier.fillMaxSize().padding(padding)) {
             when (screen) {
+                Screen.INCIDENTS -> IncidentsScreen()
                 Screen.REPORTS -> ReportsScreen()
                 Screen.SERVER -> ServerScreen()
                 Screen.P2P -> P2pScreen(localName = localName, manager = p2pManager, sync = peerSync)
