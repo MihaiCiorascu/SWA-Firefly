@@ -40,6 +40,9 @@ public record Event(
 		Objects.requireNonNull(createdAt, "createdAt");
 		Objects.requireNonNull(dot, "dot");
 		causalContext = causalContext == null ? CausalContext.EMPTY : causalContext;
+		if (causalContext.covers(dot)) {
+			throw new IllegalArgumentException("the causal context of " + dot + " already contains it");
+		}
 		supersedes = supersedes == null ? Set.of() : Set.copyOf(supersedes);
 		if (operation == Operation.CREATE) {
 			if (field != null) {

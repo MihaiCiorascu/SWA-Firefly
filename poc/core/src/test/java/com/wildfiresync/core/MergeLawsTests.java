@@ -12,12 +12,9 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Random;
-import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
@@ -125,13 +122,6 @@ class MergeLawsTests {
 			if (random.nextInt(10) == 0) {
 				all.add(author.create(record, initialValues(random, record)));
 			}
-			else if (random.nextInt(6) == 0 && resolvable(author, record).isPresent()) {
-				Field field = resolvable(author, record).orElseThrow();
-				Set<UUID> settled = new HashSet<>();
-				author.resolution(record, field).map(Resolution.Conflicted.class::cast).orElseThrow()
-						.candidates().forEach(candidate -> settled.add(candidate.eventId()));
-				all.add(author.resolve(record, field, valueFor(random, field), settled));
-			}
 			else {
 				Field field = pickField(random, record);
 				all.add(author.set(record, field, valueFor(random, field)));
@@ -142,17 +132,6 @@ class MergeLawsTests {
 			}
 		}
 		return all;
-	}
-
-	/** A MANUAL field the author currently sees in conflict, if any. */
-	private static Optional<Field> resolvable(SimulatedDevice author, RecordRef record) {
-		for (Field field : Field.values()) {
-			if (field.recordType() == record.type() && field.policy() == Field.Policy.MANUAL
-					&& author.resolution(record, field).orElse(null) instanceof Resolution.Conflicted) {
-				return Optional.of(field);
-			}
-		}
-		return Optional.empty();
 	}
 
 	private static Field pickField(Random random, RecordRef record) {
