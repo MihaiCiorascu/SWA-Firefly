@@ -10,11 +10,11 @@
 
 **Server-Sent Events (SSE).** The tablet sends one request and the server never closes it. Each time there is a new report, the server writes it into this open connection. SSE also handles drops: when the tablet reconnects, it tells the server the last report it received, and the server continues from there. SSE only goes from server to tablet, which is all this direction needs. But the tablet already keeps a NATS connection open to send events (ADR 1), so SSE would be a second open connection. We would also have to build the service that holds these connections and remembers what each tablet has received.
 
-**WebSocket.** A WebSocket is one connection that stays open, and both sides can send on it at any time. On its own it cannot continue after a drop; the app has to build that. In our case NATS does it. The NATS server accepts WebSocket connections [<a href="#16">16</a>], so the tablet can send its events (ADR 1) and receive reports over the same connection, and after a drop NATS continues from the last message the tablet received.
+**NATS JetStream client.** JetStream is the part of NATS that keeps messages in a log on disk [<a href="#14">14</a>]. Each message has a sequence number, and a client reads them in order and remembers the last one it received. The tablet already uses this client to send events (ADR 1); the same connection also receives reports from a second log that the server writes to. On a drop, the client reconnects on its own, and the stream continues from the next message the tablet has not seen.
 
-**Decision.** We chose WebSocket, through NATS. The context asks for three things: reports arrive quickly, the battery lasts twelve hours, and no report is missed after a drop. Short polling cannot give the first two together. Long polling gives fast reports, but it spends battery on repeated requests over a weak network.
+**Decision.** We chose the NATS JetStream client. The context asks for three things: reports arrive quickly, the battery lasts twelve hours, and no report is missed after a drop. Short polling cannot give the first two together. Long polling gives fast reports, but it spends battery on repeated requests over a weak network.
 
-SSE and WebSocket both give all three. The difference between them is what we have to build. With SSE we add a second connection and write the service behind it. With WebSocket we use the NATS connection the tablet already has (ADR 1), and NATS already continues after a drop. So WebSocket through NATS meets the three conditions with nothing extra to build or run.
+SSE and the NATS JetStream client both give all three. The difference between them is what we have to build. With SSE we add a second connection and write the service behind it. With the NATS JetStream client we use the connection the tablet already has (ADR 1), and NATS already continues after a drop. So the NATS JetStream client meets the three conditions while keeping the remaining parts needed to implement simple.
 
 **Consequences.** The tablet only talks to NATS and never calls the server. NATS keeps two message logs, one per direction. Tablets write events to the first and the server reads them (ADR 1). The server writes reports to the second and tablets read them. The server needs no extra service to send reports to tablets.
 
@@ -33,5 +33,3 @@ The decision has two costs. First, when a report moves to another hexagon, the s
 <a id="14">[14]</a> NATS, "JetStream." Docs.nats.io. https://docs.nats.io/nats-concepts/jetstream (accessed Oct. 11, 2026)
 
 <a id="15">[15]</a> NATS, "What is NATS." Docs.nats.io. https://docs.nats.io/nats-concepts/what-is-nats (accessed Oct. 11, 2026)
-
-<a id="16">[16]</a> NATS, "Connect over WebSocket." Docs.nats.io. https://docs.nats.io/running-a-nats-service/configuration/websocket (accessed Oct. 11, 2026)

@@ -347,7 +347,7 @@ Getting events from a tablet to the server has to survive a sync cut off halfway
 
 ### 4.2 ADR 2: How Reports Travel from Server to Device
 
-Delivering new reports back to a tablet has to arrive quickly, without draining a twelve-hour battery, and keep working through the drops typical of a fire. We compared short and long polling, Server-Sent Events, and WebSocket. We chose WebSocket over the NATS connection the tablet already holds for sending events (ADR 1): it reuses a connection that already recovers from drops, rather than opening and maintaining a second one just for the other direction. Full ADR: [How Reports Travel from Server to Device](adrs/adr2.md).
+Delivering new reports back to a tablet has to arrive quickly, without draining a twelve-hour battery, and keep working through the drops typical of a fire. We compared short and long polling, Server-Sent Events, and the NATS JetStream client. We chose the NATS JetStream client: it reuses the connection the tablet already holds for sending events (ADR 1), which already recovers from drops, rather than opening and maintaining a second one just for the other direction. Full ADR: [How Reports Travel from Server to Device](adrs/adr2.md).
 
 ### 4.3 ADR 3: How Events Are Authenticated
 

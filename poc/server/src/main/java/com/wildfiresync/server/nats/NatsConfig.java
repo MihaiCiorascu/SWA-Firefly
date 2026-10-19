@@ -24,6 +24,8 @@ public class NatsConfig {
 
 	static final String STREAM = "operation-events";
 
+	static final String REPORTS_STREAM = "reports";
+
 	private static final Logger log = LoggerFactory.getLogger(NatsConfig.class);
 
 	@Bean(destroyMethod = "close")
@@ -49,6 +51,27 @@ public class NatsConfig {
 
 		log.info("stream {} ready for {}", STREAM, Subjects.ALL);
 		return connection.getStreamContext(STREAM);
+	}
+
+	@Bean
+	public StreamContext reportsStream(Connection connection) throws IOException, JetStreamApiException {
+		StreamConfiguration configuration = StreamConfiguration.builder()
+				.name(REPORTS_STREAM)
+				.subjects(Subjects.REPORTS_ALL)
+				.storageType(StorageType.File)
+				.maxMessagesPerSubject(1)
+				.build();
+
+		JetStreamManagement management = connection.jetStreamManagement();
+		try {
+			management.addStream(configuration);
+		}
+		catch (JetStreamApiException ex) {
+			management.updateStream(configuration);
+		}
+
+		log.info("stream {} ready for {} (one message per subject)", REPORTS_STREAM, Subjects.REPORTS_ALL);
+		return connection.getStreamContext(REPORTS_STREAM);
 	}
 
 }
