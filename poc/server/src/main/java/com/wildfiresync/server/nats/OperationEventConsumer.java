@@ -20,6 +20,7 @@ import jakarta.annotation.PreDestroy;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import tools.jackson.databind.ObjectMapper;
@@ -39,7 +40,7 @@ public class OperationEventConsumer {
 
 	private MessageConsumer consumer;
 
-	public OperationEventConsumer(StreamContext stream, ObjectMapper objectMapper, MergeService mergeService) {
+	public OperationEventConsumer(@Qualifier("operationEventsStream") StreamContext stream, ObjectMapper objectMapper, MergeService mergeService) {
 		this.stream = stream;
 		this.objectMapper = objectMapper;
 		this.mergeService = mergeService;

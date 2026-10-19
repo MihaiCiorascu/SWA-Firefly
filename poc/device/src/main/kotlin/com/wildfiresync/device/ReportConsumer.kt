@@ -16,6 +16,7 @@ class ReportConsumer(
     private var consumer: MessageConsumer? = null
 
     fun start() {
+        if (hexagons.isEmpty()) return
         val stream = connection.getStreamContext(REPORTS_STREAM)
         val config = ConsumerConfiguration.builder()
             .filterSubjects(filterSubjects(hexagons))
