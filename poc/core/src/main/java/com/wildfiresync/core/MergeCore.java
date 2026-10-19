@@ -85,7 +85,8 @@ public final class MergeCore {
 		if (event.supersedes().contains(event.eventId())) {
 			throw new IllegalArgumentException("a RESOLVE_CONFLICT cannot settle itself");
 		}
-		Candidate candidate = Candidate.of(FieldValues.parse(field, event.value()), event);
+		Candidate candidate = new Candidate(FieldValues.parse(field, event.value()), event.eventId(), event.dot(),
+				event.actorId(), event.createdAt());
 		Map<Field, FieldState> fields = new EnumMap<>(Field.class);
 		fields.put(field, new FieldState.Candidates(Set.of(candidate), event.supersedes()));
 		return new RecordState(false, fields);
@@ -95,7 +96,8 @@ public final class MergeCore {
 		return switch (field.policy()) {
 			case MAX -> new FieldState.MaxValue(((FieldValue.Num) value).value(), event.eventId());
 			case UNION -> new FieldState.UnionValue(((FieldValue.Types) value).values());
-			case IMMUTABLE, LARGEST_EVENT_ID, MANUAL -> FieldState.Candidates.of(Candidate.of(value, event));
+			case IMMUTABLE, LARGEST_EVENT_ID, MANUAL -> FieldState.Candidates.of(new Candidate(value,
+					event.eventId(), event.dot(), event.actorId(), event.createdAt()));
 		};
 	}
 
@@ -134,7 +136,7 @@ public final class MergeCore {
 	private static Resolution resolveCandidates(Field field, FieldState.Candidates candidates) {
 		var ordered = candidates.ordered();
 		if (ordered.isEmpty()) {
-			// Only values that settle or replace each other get here, which honest devices never write. Keep them all.
+			// Only resolutions that settle each other get here. Keep every value rather than drop them all.
 			return new Resolution.Conflicted(candidates.all());
 		}
 		if (ordered.size() == 1) {
