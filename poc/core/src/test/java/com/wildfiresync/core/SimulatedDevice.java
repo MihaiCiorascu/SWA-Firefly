@@ -8,6 +8,7 @@ import com.wildfiresync.core.schema.FieldValue;
 import com.wildfiresync.core.schema.FieldValues;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -58,13 +59,31 @@ final class SimulatedDevice {
 		return author(record, Event.Operation.SET_FIELD, field, FieldValues.format(value));
 	}
 
+	Event settle(RecordRef record, Field field, FieldValue value) {
+		return author(record, Event.Operation.RESOLVE_CONFLICT, field, FieldValues.format(value));
+	}
+
 	private Event author(RecordRef record, Event.Operation operation, Field field, String value) {
 		counter++;
 		Event event = new Event(new UUID(idPrefix, counter), record.id(), record.type(), operation,
 				field == null ? null : field.key(), value, actor, clock, new OpId(id, counter),
-				CausalContext.EMPTY, Set.of());
+				context(), Set.of());
 		receive(event);
 		return event;
+	}
+
+	private CausalContext context() {
+		Map<NodeId, Long> counters = new HashMap<>();
+		for (OpId dot : log.keySet()) {
+			counters.computeIfAbsent(dot.node(), node -> {
+				long seen = 0;
+				while (log.containsKey(new OpId(node, seen + 1))) {
+					seen++;
+				}
+				return seen;
+			});
+		}
+		return new CausalContext(counters);
 	}
 
 	void receive(Event event) {

@@ -89,6 +89,18 @@ class TierATests {
 	}
 
 	@Test
+	void aRenameThatSawTheEarlierNameWinsEvenWithASmallerEventId() {
+		bravo.set(INCIDENT, Field.INCIDENT_NAME, new FieldValue.Text("Ridge complex"));
+		alpha.receiveAll(bravo.log());
+		alpha.set(INCIDENT, Field.INCIDENT_NAME, new FieldValue.Text("Ridge fire"));
+
+		reconnect();
+
+		assertEquals(new FieldValue.Text("Ridge fire"), valueOn(bravo, INCIDENT, Field.INCIDENT_NAME));
+		assertEquals(alpha.world(), bravo.world());
+	}
+
+	@Test
 	void theCreateSetsTheImmutableIncidentId() {
 		alpha.create(REPORT, Map.of(Field.REPORT_INCIDENT_ID, new FieldValue.Reference(INCIDENT.id())));
 
