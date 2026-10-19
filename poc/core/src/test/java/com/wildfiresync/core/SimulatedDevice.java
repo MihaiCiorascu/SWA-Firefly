@@ -58,20 +58,11 @@ final class SimulatedDevice {
 		return author(record, Event.Operation.SET_FIELD, field, FieldValues.format(value));
 	}
 
-	Event resolve(RecordRef record, Field field, FieldValue value, Set<UUID> supersedes) {
-		return author(record, Event.Operation.RESOLVE_CONFLICT, field, FieldValues.format(value), supersedes);
-	}
-
 	private Event author(RecordRef record, Event.Operation operation, Field field, String value) {
-		return author(record, operation, field, value, Set.of());
-	}
-
-	private Event author(RecordRef record, Event.Operation operation, Field field, String value,
-			Set<UUID> supersedes) {
 		counter++;
 		Event event = new Event(new UUID(idPrefix, counter), record.id(), record.type(), operation,
 				field == null ? null : field.key(), value, actor, clock, new OpId(id, counter),
-				CausalContext.EMPTY, supersedes);
+				CausalContext.EMPTY, Set.of());
 		receive(event);
 		return event;
 	}

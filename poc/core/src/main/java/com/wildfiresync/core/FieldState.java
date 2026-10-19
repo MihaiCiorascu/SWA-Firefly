@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.UUID;
 
 /**
  * The merged state of one field.
@@ -46,37 +45,25 @@ public sealed interface FieldState permits FieldState.MaxValue, FieldState.Union
 
     }
 
-    /**
-     * Every value written to the field, for IMMUTABLE, LARGEST_EVENT_ID and MANUAL policies, plus the event ids that a
-     * RESOLVE_CONFLICT settled. Both only grow, so the join stays a plain union.
-     */
-    record Candidates(Set<Candidate> values, Set<UUID> superseded) implements FieldState {
+    /** Every value written to the field, for IMMUTABLE, LARGEST_EVENT_ID and MANUAL policies */
+    record Candidates(Set<Candidate> values) implements FieldState {
 
         public Candidates {
             Objects.requireNonNull(values, "values");
-            Objects.requireNonNull(superseded, "superseded");
             values = Collections.unmodifiableSet(new LinkedHashSet<>(values));
-            superseded = Collections.unmodifiableSet(new TreeSet<>(superseded));
         }
 
         public static Candidates of(Candidate candidate) {
-            return new Candidates(Set.of(candidate), Set.of());
+            return new Candidates(Set.of(candidate));
         }
 
         public Candidates join(Candidates other) {
             Set<Candidate> union = new LinkedHashSet<>(values);
             union.addAll(other.values);
-            Set<UUID> settled = new TreeSet<>(superseded);
-            settled.addAll(other.superseded);
-            return new Candidates(union, settled);
+            return new Candidates(union);
         }
 
-        /** The values no resolution has settled yet */
         public List<Candidate> ordered() {
-            return values.stream().filter(candidate -> !superseded.contains(candidate.eventId())).sorted().toList();
-        }
-
-        public List<Candidate> all() {
             return values.stream().sorted().toList();
         }
 

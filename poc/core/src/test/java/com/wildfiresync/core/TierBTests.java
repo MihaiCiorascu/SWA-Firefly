@@ -13,7 +13,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -90,82 +89,13 @@ class TierBTests {
 		assertEquals(2, conflictOn(alpha).candidates().size());
 	}
 
-	private static Set<UUID> idsOf(Resolution.Conflicted conflict) {
-		return conflict.candidates().stream().map(Candidate::eventId).collect(Collectors.toSet());
-	}
-
 	@Test
-	void aResolutionSettlesTheConflictOnEveryDevice() {
-		alpha.set(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Fire crossed the ridge"));
-		bravo.set(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Evacuation route B blocked"));
-		reconnect();
+	void resolvingAConflictIsRefusedUntilCausalContextIsMerged() {
+		Event resolution = new Event(new UUID(3, 1), REPORT.id(), REPORT.type(), Event.Operation.RESOLVE_CONFLICT,
+				Field.REPORT_DESCRIPTION.key(), "agreed wording", "crew-lead", Instant.EPOCH,
+				new OpId(new NodeId("tablet-c"), 1), CausalContext.EMPTY, Set.of(new UUID(1, 1)));
 
-		alpha.resolve(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Fire crossed the ridge, route B blocked"),
-				idsOf(conflictOn(alpha)));
-		reconnect();
-
-		for (SimulatedDevice device : List.of(alpha, bravo)) {
-			Resolution.Settled settled = assertInstanceOf(Resolution.Settled.class,
-					device.resolution(REPORT, Field.REPORT_DESCRIPTION).orElseThrow());
-			assertEquals(new FieldValue.Text("Fire crossed the ridge, route B blocked"), settled.value());
-		}
-		assertEquals(alpha.world(), bravo.world());
-	}
-
-	@Test
-	void concurrentResolutionsBecomeANewConflict() {
-		alpha.set(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Fire crossed the ridge"));
-		bravo.set(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Evacuation route B blocked"));
-		reconnect();
-		Set<UUID> original = idsOf(conflictOn(alpha));
-
-		alpha.resolve(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Ridge crossed"), original);
-		bravo.resolve(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Route B blocked"), original);
-		reconnect();
-
-		List<FieldValue> values = conflictOn(alpha).candidates().stream().map(Candidate::value).toList();
-		assertEquals(List.of(new FieldValue.Text("Ridge crossed"), new FieldValue.Text("Route B blocked")), values);
-		assertEquals(alpha.world(), bravo.world());
-	}
-
-	@Test
-	void aValueTheResolutionDidNotSeeStaysInConflict() {
-		alpha.set(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Fire crossed the ridge"));
-		bravo.set(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Evacuation route B blocked"));
-		reconnect();
-
-		alpha.resolve(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Agreed wording"), idsOf(conflictOn(alpha)));
-		bravo.set(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Wind turning north"));
-		reconnect();
-
-		List<FieldValue> values = conflictOn(bravo).candidates().stream().map(Candidate::value).toList();
-		assertEquals(List.of(new FieldValue.Text("Agreed wording"), new FieldValue.Text("Wind turning north")), values);
-	}
-
-	@Test
-	void onlyAManualFieldCanBeResolved() {
-		Event resolution = resolution(Field.REPORT_SEVERITY.key(), "5", Set.of(new UUID(1, 1)));
-
-		assertThrows(IllegalArgumentException.class, () -> MergeCore.lift(resolution));
-	}
-
-	@Test
-	void aResolutionMustNameWhatItSettles() {
-		Event resolution = resolution(Field.REPORT_DESCRIPTION.key(), "agreed wording", Set.of());
-
-		assertThrows(IllegalArgumentException.class, () -> MergeCore.validate(resolution));
-	}
-
-	@Test
-	void aResolutionCannotSettleItself() {
-		Event resolution = resolution(Field.REPORT_DESCRIPTION.key(), "agreed wording", Set.of(new UUID(3, 1)));
-
-		assertThrows(IllegalArgumentException.class, () -> MergeCore.lift(resolution));
-	}
-
-	private static Event resolution(String field, String value, Set<UUID> supersedes) {
-		return new Event(new UUID(3, 1), REPORT.id(), REPORT.type(), Event.Operation.RESOLVE_CONFLICT, field, value,
-				"crew-lead", Instant.EPOCH, new OpId(new NodeId("tablet-c"), 1), CausalContext.EMPTY, supersedes);
+		assertThrows(UnsupportedOperationException.class, () -> MergeCore.lift(resolution));
 	}
 
 	@Test
