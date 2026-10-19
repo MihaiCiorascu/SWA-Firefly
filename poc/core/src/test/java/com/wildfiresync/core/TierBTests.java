@@ -146,8 +146,10 @@ class TierBTests {
 						Set.of()));
 	}
 
-/*
-	This test should be uncommented once the DVVs are implemented.
+	private static Event resolution(String field, String value, Set<UUID> supersedes) {
+		return new Event(new UUID(3, 1), REPORT.id(), REPORT.type(), Event.Operation.RESOLVE_CONFLICT, field, value,
+				"crew-lead", Instant.EPOCH, new OpId(new NodeId("tablet-c"), 1), CausalContext.EMPTY, supersedes);
+	}
 
 	private List<FieldValue> valuesOn(SimulatedDevice device) {
 		return conflictOn(device).candidates().stream().map(Candidate::value).toList();
@@ -170,6 +172,5 @@ class TierBTests {
 				valuesOn(alpha), "a device that had received neither value settled one of them");
 		assertEquals(alpha.world(), bravo.world());
 	}
-*/
 
 }
