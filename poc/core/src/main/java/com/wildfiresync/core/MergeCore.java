@@ -36,19 +36,14 @@ public final class MergeCore {
 	}
 
 	public static void validate(Event event) {
-		switch (event.operation()) {
-			case CREATE, SET_FIELD -> lift(event);
-			case RESOLVE_CONFLICT -> FieldValues.parse(Field.of(event.recordType(), event.field()), event.value());
-		}
+		lift(event);
 	}
 
 	/** The smallest world in which this event holds. Rejects anything the schema cannot represent. */
 	public static World lift(Event event) {
 		RecordState state = switch (event.operation()) {
 			case CREATE -> createState(event);
-			case SET_FIELD -> fieldState(event);
-			case RESOLVE_CONFLICT -> throw new UnsupportedOperationException(
-					"resolving a conflict needs the causal context of the resolving device, which is not merged yet");
+			case SET_FIELD, RESOLVE_CONFLICT -> fieldState(event);
 		};
 		Map<RecordRef, RecordState> records = new LinkedHashMap<>();
 		records.put(new RecordRef(event.recordType(), event.recordId()), state);
@@ -67,6 +62,9 @@ public final class MergeCore {
 		if (field.policy() == Field.Policy.IMMUTABLE) {
 			throw new IllegalArgumentException(field + " is immutable, only the CREATE of the record sets it");
 		}
+		if (event.operation() == Event.Operation.RESOLVE_CONFLICT && field.tier() != Field.Tier.B) {
+			throw new IllegalArgumentException(field + " merges automatically, it has no conflict to resolve");
+		}
 		Map<Field, FieldState> fields = new EnumMap<>(Field.class);
 		fields.put(field, assignment(field, FieldValues.parse(field, event.value()), event));
 		return new RecordState(false, fields);
@@ -77,7 +75,7 @@ public final class MergeCore {
 			case MAX -> new FieldState.MaxValue(((FieldValue.Num) value).value(), event.eventId());
 			case UNION -> new FieldState.UnionValue(((FieldValue.Types) value).values());
 			case IMMUTABLE, LARGEST_EVENT_ID, MANUAL -> FieldState.Candidates.of(new Candidate(value,
-					event.eventId(), event.dot(), event.actorId(), event.createdAt()));
+					event.eventId(), event.dot(), event.causalContext(), event.actorId(), event.createdAt()));
 		};
 	}
 
@@ -114,7 +112,10 @@ public final class MergeCore {
 	}
 
 	private static Resolution resolveCandidates(Field field, FieldState.Candidates candidates) {
-		var ordered = candidates.ordered();
+		var ordered = candidates.ordered().stream()
+				.filter(candidate -> candidates.values().stream()
+						.noneMatch(other -> other.causalContext().covers(candidate.dot())))
+				.toList();
 		if (ordered.isEmpty()) {
 			throw new IllegalStateException(field + " has no value");
 		}

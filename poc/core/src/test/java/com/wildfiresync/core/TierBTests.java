@@ -11,6 +11,7 @@ import com.wildfiresync.core.schema.FieldValue;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -40,6 +41,11 @@ class TierBTests {
 	private Resolution.Conflicted conflictOn(SimulatedDevice device) {
 		return assertInstanceOf(Resolution.Conflicted.class,
 				device.resolution(REPORT, Field.REPORT_DESCRIPTION).orElseThrow());
+	}
+
+	private FieldValue settledOn(SimulatedDevice device) {
+		return assertInstanceOf(Resolution.Settled.class,
+				device.resolution(REPORT, Field.REPORT_DESCRIPTION).orElseThrow()).value();
 	}
 
 	@Test
@@ -79,23 +85,57 @@ class TierBTests {
 
 
 	@Test
-	void aWriterWhoSawTheOtherValueStillCannotSupersedeItYet() {
+	void aWriterWhoSawTheOtherValueSupersedesIt() {
 		alpha.set(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Fire crossed the ridge"));
 		bravo.receiveAll(alpha.log());
 		bravo.set(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Fire crossed the ridge, wind turning"));
 
 		reconnect();
 
-		assertEquals(2, conflictOn(alpha).candidates().size());
+		assertEquals(new FieldValue.Text("Fire crossed the ridge, wind turning"), settledOn(alpha));
+		assertEquals(alpha.world(), bravo.world());
 	}
 
 	@Test
-	void resolvingAConflictIsRefusedUntilCausalContextIsMerged() {
-		Event resolution = new Event(new UUID(3, 1), REPORT.id(), REPORT.type(), Event.Operation.RESOLVE_CONFLICT,
-				Field.REPORT_DESCRIPTION.key(), "agreed wording", "crew-lead", Instant.EPOCH,
-				new OpId(new NodeId("tablet-c"), 1), CausalContext.EMPTY, Set.of(new UUID(1, 1)));
+	void aResolutionSupersedesTheConflictItSaw() {
+		alpha.set(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Fire crossed the ridge"));
+		bravo.set(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Evacuation route B blocked"));
+		reconnect();
 
-		assertThrows(UnsupportedOperationException.class, () -> MergeCore.lift(resolution));
+		alpha.settle(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Ridge crossed, route B blocked"));
+		reconnect();
+
+		assertEquals(new FieldValue.Text("Ridge crossed, route B blocked"), settledOn(bravo));
+	}
+
+	@Test
+	void concurrentResolutionsBecomeANewConflict() {
+		alpha.set(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Fire crossed the ridge"));
+		bravo.set(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Evacuation route B blocked"));
+		reconnect();
+
+		alpha.settle(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Ridge crossed"));
+		bravo.settle(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Route B blocked, use route C"));
+		reconnect();
+
+		List<FieldValue> values = conflictOn(alpha).candidates().stream().map(Candidate::value).toList();
+		assertEquals(List.of(new FieldValue.Text("Ridge crossed"), new FieldValue.Text("Route B blocked, use route C")),
+				values);
+	}
+
+	@Test
+	void onlyATierBFieldCanBeResolved() {
+		assertThrows(IllegalArgumentException.class,
+				() -> alpha.settle(REPORT, Field.REPORT_SEVERITY, new FieldValue.Num(5)));
+	}
+
+	@Test
+	void anEventCannotHaveSeenItself() {
+		OpId dot = new OpId(new NodeId("tablet-c"), 2);
+		assertThrows(IllegalArgumentException.class,
+				() -> new Event(new UUID(3, 3), REPORT.id(), REPORT.type(), Event.Operation.SET_FIELD,
+						Field.REPORT_DESCRIPTION.key(), "smoke", "crew-lead", Instant.EPOCH, dot,
+						new CausalContext(Map.of(dot.node(), 2L)), Set.of()));
 	}
 
 	@Test
