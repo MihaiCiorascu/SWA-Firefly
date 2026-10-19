@@ -208,4 +208,30 @@ class TierBTests {
 						Set.of()));
 	}
 
+/*
+	This test should be uncommented once the DVVs are implemented.
+
+	private List<FieldValue> valuesOn(SimulatedDevice device) {
+		return conflictOn(device).candidates().stream().map(Candidate::value).toList();
+	}
+
+	@Test
+	void aResolutionCannotSettleAValueItsWriterNeverReceived() {
+		Event ridge = alpha.set(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Fire crossed the ridge"));
+		bravo.set(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Evacuation route B blocked"));
+		reconnect();
+
+		// tablet-c holds nothing at all: CausalContext.EMPTY covers no dot. It still names alpha's
+		// event id in supersedes, and that claim is the only thing standing behind the value going away.
+		Event neverSawIt = resolution(Field.REPORT_DESCRIPTION.key(), "Charlie decides", Set.of(ridge.eventId()));
+		alpha.receive(neverSawIt);
+		bravo.receive(neverSawIt);
+
+		assertEquals(List.of(new FieldValue.Text("Fire crossed the ridge"),
+						new FieldValue.Text("Evacuation route B blocked"), new FieldValue.Text("Charlie decides")),
+				valuesOn(alpha), "a device that had received neither value settled one of them");
+		assertEquals(alpha.world(), bravo.world());
+	}
+*/
+
 }
