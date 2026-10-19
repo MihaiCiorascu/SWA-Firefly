@@ -10,7 +10,6 @@ import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 
 /**
  * The merging library main algorithm. Merges operations into current states known by every device.
@@ -36,7 +35,6 @@ public final class MergeCore {
 		return result;
 	}
 
-	/** Throws when the schema cannot represent the event, so it can be refused before it is stored. */
 	public static void validate(Event event) {
 		lift(event);
 	}
@@ -45,8 +43,7 @@ public final class MergeCore {
 	public static World lift(Event event) {
 		RecordState state = switch (event.operation()) {
 			case CREATE -> createState(event);
-			case SET_FIELD -> fieldState(event);
-			case RESOLVE_CONFLICT -> resolutionState(event);
+			case SET_FIELD, RESOLVE_CONFLICT -> fieldState(event);
 		};
 		Map<RecordRef, RecordState> records = new LinkedHashMap<>();
 		records.put(new RecordRef(event.recordType(), event.recordId()), state);
@@ -65,29 +62,11 @@ public final class MergeCore {
 		if (field.policy() == Field.Policy.IMMUTABLE) {
 			throw new IllegalArgumentException(field + " is immutable, only the CREATE of the record sets it");
 		}
+		if (event.operation() == Event.Operation.RESOLVE_CONFLICT && field.tier() != Field.Tier.B) {
+			throw new IllegalArgumentException(field + " merges automatically, it has no conflict to resolve");
+		}
 		Map<Field, FieldState> fields = new EnumMap<>(Field.class);
 		fields.put(field, assignment(field, FieldValues.parse(field, event.value()), event));
-		return new RecordState(false, fields);
-	}
-
-	/**
-	 * A resolution is one more candidate, and it settles the candidates it names in supersedes. A value it did not name,
-	 * such as one written concurrently, stays, and so does a concurrent resolution, which is a new conflict.
-	 */
-	private static RecordState resolutionState(Event event) {
-		Field field = Field.of(event.recordType(), event.field());
-		if (field.policy() != Field.Policy.MANUAL) {
-			throw new IllegalArgumentException(field + " merges automatically, only a MANUAL field has conflicts to resolve");
-		}
-		if (event.supersedes().isEmpty()) {
-			throw new IllegalArgumentException("a RESOLVE_CONFLICT must name the candidates it settles");
-		}
-		if (event.supersedes().contains(event.eventId())) {
-			throw new IllegalArgumentException("a RESOLVE_CONFLICT cannot settle itself");
-		}
-		Candidate candidate = Candidate.of(FieldValues.parse(field, event.value()), event);
-		Map<Field, FieldState> fields = new EnumMap<>(Field.class);
-		fields.put(field, new FieldState.Candidates(Set.of(candidate), event.supersedes()));
 		return new RecordState(false, fields);
 	}
 
@@ -95,7 +74,8 @@ public final class MergeCore {
 		return switch (field.policy()) {
 			case MAX -> new FieldState.MaxValue(((FieldValue.Num) value).value(), event.eventId());
 			case UNION -> new FieldState.UnionValue(((FieldValue.Types) value).values());
-			case IMMUTABLE, LARGEST_EVENT_ID, MANUAL -> FieldState.Candidates.of(Candidate.of(value, event));
+			case IMMUTABLE, LARGEST_EVENT_ID, MANUAL -> FieldState.Candidates.of(new Candidate(value,
+					event.eventId(), event.dot(), event.causalContext(), event.actorId(), event.createdAt()));
 		};
 	}
 
@@ -132,10 +112,12 @@ public final class MergeCore {
 	}
 
 	private static Resolution resolveCandidates(Field field, FieldState.Candidates candidates) {
-		var ordered = candidates.ordered();
+		var ordered = candidates.ordered().stream()
+				.filter(candidate -> candidates.values().stream()
+						.noneMatch(other -> other.causalContext().covers(candidate.dot())))
+				.toList();
 		if (ordered.isEmpty()) {
-			// Only values that settle or replace each other get here, which honest devices never write. Keep them all.
-			return new Resolution.Conflicted(candidates.all());
+			throw new IllegalStateException(field + " has no value");
 		}
 		if (ordered.size() == 1) {
 			return settle(ordered.getFirst());

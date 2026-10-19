@@ -8,21 +8,18 @@ import com.wildfiresync.core.schema.CausalContext;
 import com.wildfiresync.core.schema.Event;
 import com.wildfiresync.core.schema.Field;
 import com.wildfiresync.core.schema.FieldValue;
-import com.wildfiresync.core.schema.FieldValues.IncidentStatus;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class TierBTests {
 
 	private static final RecordRef REPORT = RecordRef.report(new UUID(7, 1));
-
-	private static final RecordRef INCIDENT = RecordRef.incident(new UUID(7, 2));
 
 	private SimulatedDevice alpha;
 
@@ -44,6 +41,11 @@ class TierBTests {
 	private Resolution.Conflicted conflictOn(SimulatedDevice device) {
 		return assertInstanceOf(Resolution.Conflicted.class,
 				device.resolution(REPORT, Field.REPORT_DESCRIPTION).orElseThrow());
+	}
+
+	private FieldValue settledOn(SimulatedDevice device) {
+		return assertInstanceOf(Resolution.Settled.class,
+				device.resolution(REPORT, Field.REPORT_DESCRIPTION).orElseThrow()).value();
 	}
 
 	@Test
@@ -83,65 +85,27 @@ class TierBTests {
 
 
 	@Test
-	void aWriterWhoSawTheOtherValueReplacesIt() {
+	void aWriterWhoSawTheOtherValueSupersedesIt() {
 		alpha.set(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Fire crossed the ridge"));
 		bravo.receiveAll(alpha.log());
 		bravo.set(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Fire crossed the ridge, wind turning"));
 
 		reconnect();
 
-		for (SimulatedDevice device : List.of(alpha, bravo)) {
-			Resolution.Settled settled = assertInstanceOf(Resolution.Settled.class,
-					device.resolution(REPORT, Field.REPORT_DESCRIPTION).orElseThrow());
-			assertEquals(new FieldValue.Text("Fire crossed the ridge, wind turning"), settled.value());
-		}
-	}
-
-	@Test
-	void oneDeviceEditingTwiceNeverConflictsWithItself() {
-		alpha.set(INCIDENT, Field.INCIDENT_STATUS, new FieldValue.Status(IncidentStatus.ACTIVE));
-		alpha.set(INCIDENT, Field.INCIDENT_STATUS, new FieldValue.Status(IncidentStatus.CONTAINED));
-
-		reconnect();
-
-		Resolution.Settled settled = assertInstanceOf(Resolution.Settled.class,
-				bravo.resolution(INCIDENT, Field.INCIDENT_STATUS).orElseThrow());
-		assertEquals(new FieldValue.Status(IncidentStatus.CONTAINED), settled.value());
-	}
-
-	@Test
-	void aWriterThatMissedPartOfAnotherDevicesLogDoesNotReplaceWhatItMissed() {
-		alpha.set(REPORT, Field.REPORT_SEVERITY, new FieldValue.Num(3));
-		alpha.set(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Fire crossed the ridge"));
-		// bravo only got alpha's second event, so its context cannot claim it
-		bravo.receive(alpha.log().get(1));
-		bravo.set(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Evacuation route B blocked"));
-
-		reconnect();
-
-		assertEquals(2, conflictOn(alpha).candidates().size());
-	}
-
-	private static Set<UUID> idsOf(Resolution.Conflicted conflict) {
-		return conflict.candidates().stream().map(Candidate::eventId).collect(Collectors.toSet());
-	}
-
-	@Test
-	void aResolutionSettlesTheConflictOnEveryDevice() {
-		alpha.set(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Fire crossed the ridge"));
-		bravo.set(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Evacuation route B blocked"));
-		reconnect();
-
-		alpha.resolve(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Fire crossed the ridge, route B blocked"),
-				idsOf(conflictOn(alpha)));
-		reconnect();
-
-		for (SimulatedDevice device : List.of(alpha, bravo)) {
-			Resolution.Settled settled = assertInstanceOf(Resolution.Settled.class,
-					device.resolution(REPORT, Field.REPORT_DESCRIPTION).orElseThrow());
-			assertEquals(new FieldValue.Text("Fire crossed the ridge, route B blocked"), settled.value());
-		}
+		assertEquals(new FieldValue.Text("Fire crossed the ridge, wind turning"), settledOn(alpha));
 		assertEquals(alpha.world(), bravo.world());
+	}
+
+	@Test
+	void aResolutionSupersedesTheConflictItSaw() {
+		alpha.set(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Fire crossed the ridge"));
+		bravo.set(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Evacuation route B blocked"));
+		reconnect();
+
+		alpha.settle(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Ridge crossed, route B blocked"));
+		reconnect();
+
+		assertEquals(new FieldValue.Text("Ridge crossed, route B blocked"), settledOn(bravo));
 	}
 
 	@Test
@@ -149,55 +113,29 @@ class TierBTests {
 		alpha.set(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Fire crossed the ridge"));
 		bravo.set(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Evacuation route B blocked"));
 		reconnect();
-		Set<UUID> original = idsOf(conflictOn(alpha));
 
-		alpha.resolve(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Ridge crossed"), original);
-		bravo.resolve(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Route B blocked"), original);
+		alpha.settle(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Ridge crossed"));
+		bravo.settle(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Route B blocked, use route C"));
 		reconnect();
 
 		List<FieldValue> values = conflictOn(alpha).candidates().stream().map(Candidate::value).toList();
-		assertEquals(List.of(new FieldValue.Text("Ridge crossed"), new FieldValue.Text("Route B blocked")), values);
-		assertEquals(alpha.world(), bravo.world());
+		assertEquals(List.of(new FieldValue.Text("Ridge crossed"), new FieldValue.Text("Route B blocked, use route C")),
+				values);
 	}
 
 	@Test
-	void aValueTheResolutionDidNotSeeStaysInConflict() {
-		alpha.set(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Fire crossed the ridge"));
-		bravo.set(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Evacuation route B blocked"));
-		reconnect();
-
-		alpha.resolve(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Agreed wording"), idsOf(conflictOn(alpha)));
-		bravo.set(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Wind turning north"));
-		reconnect();
-
-		List<FieldValue> values = conflictOn(bravo).candidates().stream().map(Candidate::value).toList();
-		assertEquals(List.of(new FieldValue.Text("Agreed wording"), new FieldValue.Text("Wind turning north")), values);
+	void onlyATierBFieldCanBeResolved() {
+		assertThrows(IllegalArgumentException.class,
+				() -> alpha.settle(REPORT, Field.REPORT_SEVERITY, new FieldValue.Num(5)));
 	}
 
 	@Test
-	void onlyAManualFieldCanBeResolved() {
-		Event resolution = resolution(Field.REPORT_SEVERITY.key(), "5", Set.of(new UUID(1, 1)));
-
-		assertThrows(IllegalArgumentException.class, () -> MergeCore.lift(resolution));
-	}
-
-	@Test
-	void aResolutionMustNameWhatItSettles() {
-		Event resolution = resolution(Field.REPORT_DESCRIPTION.key(), "agreed wording", Set.of());
-
-		assertThrows(IllegalArgumentException.class, () -> MergeCore.validate(resolution));
-	}
-
-	@Test
-	void aResolutionCannotSettleItself() {
-		Event resolution = resolution(Field.REPORT_DESCRIPTION.key(), "agreed wording", Set.of(new UUID(3, 1)));
-
-		assertThrows(IllegalArgumentException.class, () -> MergeCore.lift(resolution));
-	}
-
-	private static Event resolution(String field, String value, Set<UUID> supersedes) {
-		return new Event(new UUID(3, 1), REPORT.id(), REPORT.type(), Event.Operation.RESOLVE_CONFLICT, field, value,
-				"crew-lead", Instant.EPOCH, new OpId(new NodeId("tablet-c"), 1), CausalContext.EMPTY, supersedes);
+	void anEventCannotHaveSeenItself() {
+		OpId dot = new OpId(new NodeId("tablet-c"), 2);
+		assertThrows(IllegalArgumentException.class,
+				() -> new Event(new UUID(3, 3), REPORT.id(), REPORT.type(), Event.Operation.SET_FIELD,
+						Field.REPORT_DESCRIPTION.key(), "smoke", "crew-lead", Instant.EPOCH, dot,
+						new CausalContext(Map.of(dot.node(), 2L)), Set.of()));
 	}
 
 	@Test
@@ -206,6 +144,33 @@ class TierBTests {
 				() -> new Event(new UUID(3, 2), REPORT.id(), REPORT.type(), Event.Operation.CREATE, "severity", "5",
 						"crew-lead", Instant.EPOCH, new OpId(new NodeId("tablet-c"), 2), CausalContext.EMPTY,
 						Set.of()));
+	}
+
+	private static Event resolution(String field, String value, Set<UUID> supersedes) {
+		return new Event(new UUID(3, 1), REPORT.id(), REPORT.type(), Event.Operation.RESOLVE_CONFLICT, field, value,
+				"crew-lead", Instant.EPOCH, new OpId(new NodeId("tablet-c"), 1), CausalContext.EMPTY, supersedes);
+	}
+
+	private List<FieldValue> valuesOn(SimulatedDevice device) {
+		return conflictOn(device).candidates().stream().map(Candidate::value).toList();
+	}
+
+	@Test
+	void aResolutionCannotSettleAValueItsWriterNeverReceived() {
+		Event ridge = alpha.set(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Fire crossed the ridge"));
+		bravo.set(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Evacuation route B blocked"));
+		reconnect();
+
+		// tablet-c holds nothing at all: CausalContext.EMPTY covers no dot. It still names alpha's
+		// event id in supersedes, and that claim is the only thing standing behind the value going away.
+		Event neverSawIt = resolution(Field.REPORT_DESCRIPTION.key(), "Charlie decides", Set.of(ridge.eventId()));
+		alpha.receive(neverSawIt);
+		bravo.receive(neverSawIt);
+
+		assertEquals(List.of(new FieldValue.Text("Fire crossed the ridge"),
+						new FieldValue.Text("Evacuation route B blocked"), new FieldValue.Text("Charlie decides")),
+				valuesOn(alpha), "a device that had received neither value settled one of them");
+		assertEquals(alpha.world(), bravo.world());
 	}
 
 }

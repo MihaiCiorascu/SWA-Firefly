@@ -60,7 +60,10 @@ class ReportService(private val database: LocalDatabase, private val clock: Cloc
         write(record, Event.Operation.SET_FIELD, field.key(), FieldValues.format(checked(value)))
     }
 
-    /** settles every candidate the tablet shows for the field with the value the crew leaders agreed on */
+    /**
+     * settles the field with the value the crew leaders agreed on. the causal context does the settling, it covers
+     * every candidate this tablet holds without a gap. supersedes only names the candidates that were shown
+     */
     fun resolveConflict(record: RecordRef, field: Field, value: FieldValue): Event = database.transaction {
         val candidates = conflicts.findAll()[record.id()]?.get(field)
         require(!candidates.isNullOrEmpty()) { "$field of $record is not in conflict" }

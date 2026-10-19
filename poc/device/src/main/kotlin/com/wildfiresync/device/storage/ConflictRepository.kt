@@ -55,7 +55,7 @@ class ConflictRepository(private val database: LocalDatabase) {
         } else {
             FieldValues.parse(field, event.value())
         }
-        return Candidate.of(value, event)
+        return Candidate(value, event.eventId(), event.dot(), event.causalContext(), event.actorId(), event.createdAt())
     }
 
 }

@@ -8,12 +8,12 @@ import com.wildfiresync.core.schema.FieldValue;
 import com.wildfiresync.core.schema.FieldValues;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.TreeMap;
 import java.util.UUID;
 
 final class SimulatedDevice {
@@ -59,33 +59,30 @@ final class SimulatedDevice {
 		return author(record, Event.Operation.SET_FIELD, field, FieldValues.format(value));
 	}
 
-	Event resolve(RecordRef record, Field field, FieldValue value, Set<UUID> supersedes) {
-		return author(record, Event.Operation.RESOLVE_CONFLICT, field, FieldValues.format(value), supersedes);
+	Event settle(RecordRef record, Field field, FieldValue value) {
+		return author(record, Event.Operation.RESOLVE_CONFLICT, field, FieldValues.format(value));
 	}
 
 	private Event author(RecordRef record, Event.Operation operation, Field field, String value) {
-		return author(record, operation, field, value, Set.of());
-	}
-
-	private Event author(RecordRef record, Event.Operation operation, Field field, String value,
-			Set<UUID> supersedes) {
-		CausalContext seen = context();
 		counter++;
 		Event event = new Event(new UUID(idPrefix, counter), record.id(), record.type(), operation,
-				field == null ? null : field.key(), value, actor, clock, new OpId(id, counter), seen, supersedes);
+				field == null ? null : field.key(), value, actor, clock, new OpId(id, counter),
+				context(), Set.of());
 		receive(event);
 		return event;
 	}
 
-	/** Per node, the highest sequence number held with no gap before it, like the tablet keeps it. */
-	CausalContext context() {
-		Map<NodeId, Long> counters = new TreeMap<>();
-		log.keySet().stream().sorted().forEach(dot -> {
-			long held = counters.getOrDefault(dot.node(), 0L);
-			if (dot.seq() == held + 1) {
-				counters.put(dot.node(), dot.seq());
-			}
-		});
+	private CausalContext context() {
+		Map<NodeId, Long> counters = new HashMap<>();
+		for (OpId dot : log.keySet()) {
+			counters.computeIfAbsent(dot.node(), node -> {
+				long seen = 0;
+				while (log.containsKey(new OpId(node, seen + 1))) {
+					seen++;
+				}
+				return seen;
+			});
+		}
 		return new CausalContext(counters);
 	}
 
