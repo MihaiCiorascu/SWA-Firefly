@@ -42,6 +42,13 @@ class FieldValuesTests {
 	}
 
 	@Test
+	void locationsOffTheMapAreRejected() {
+		assertThrows(IllegalArgumentException.class, () -> FieldValues.parse(Field.REPORT_LOCATION, "91,4"));
+		assertThrows(IllegalArgumentException.class, () -> FieldValues.parse(Field.REPORT_LOCATION, "51,-181"));
+		assertThrows(IllegalArgumentException.class, () -> FieldValues.parse(Field.REPORT_LOCATION, "NaN,4"));
+	}
+
+	@Test
 	void unknownEnumValuesAreRejected() {
 		assertThrows(IllegalArgumentException.class, () -> FieldValues.parse(Field.INCIDENT_STATUS, "SMOULDERING"));
 		assertThrows(IllegalArgumentException.class, () -> FieldValues.parse(Field.REPORT_TYPE, "FLOOD"));

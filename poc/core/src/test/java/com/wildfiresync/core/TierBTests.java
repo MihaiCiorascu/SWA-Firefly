@@ -146,4 +146,31 @@ class TierBTests {
 						Set.of()));
 	}
 
+	private static Event resolution(String field, String value, Set<UUID> supersedes) {
+		return new Event(new UUID(3, 1), REPORT.id(), REPORT.type(), Event.Operation.RESOLVE_CONFLICT, field, value,
+				"crew-lead", Instant.EPOCH, new OpId(new NodeId("tablet-c"), 1), CausalContext.EMPTY, supersedes);
+	}
+
+	private List<FieldValue> valuesOn(SimulatedDevice device) {
+		return conflictOn(device).candidates().stream().map(Candidate::value).toList();
+	}
+
+	@Test
+	void aResolutionCannotSettleAValueItsWriterNeverReceived() {
+		Event ridge = alpha.set(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Fire crossed the ridge"));
+		bravo.set(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Evacuation route B blocked"));
+		reconnect();
+
+		// tablet-c holds nothing at all: CausalContext.EMPTY covers no dot. It still names alpha's
+		// event id in supersedes, and that claim is the only thing standing behind the value going away.
+		Event neverSawIt = resolution(Field.REPORT_DESCRIPTION.key(), "Charlie decides", Set.of(ridge.eventId()));
+		alpha.receive(neverSawIt);
+		bravo.receive(neverSawIt);
+
+		assertEquals(List.of(new FieldValue.Text("Fire crossed the ridge"),
+						new FieldValue.Text("Evacuation route B blocked"), new FieldValue.Text("Charlie decides")),
+				valuesOn(alpha), "a device that had received neither value settled one of them");
+		assertEquals(alpha.world(), bravo.world());
+	}
+
 }
