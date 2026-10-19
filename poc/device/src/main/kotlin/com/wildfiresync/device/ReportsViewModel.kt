@@ -3,58 +3,47 @@ package com.wildfiresync.device
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.wildfiresync.core.NodeId
-import com.wildfiresync.device.storage.LocalDatabase
-import com.wildfiresync.device.storage.ReplicaStateRepository
-import com.wildfiresync.device.storage.StoredReport
-import kotlinx.coroutines.Dispatchers
+import com.wildfiresync.core.RecordRef
+import com.wildfiresync.core.schema.Event
+import com.wildfiresync.core.schema.Field
+import com.wildfiresync.core.schema.FieldValue
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.UUID
 
-data class ReportsUiState(val reports: List<StoredReport> = emptyList(), val error: String? = null)
+data class ReportsUiState(val tablet: TabletState = TabletState(), val error: String? = null)
 
+/** for the incidents and reports tabs, both go through the shared store */
 class ReportsViewModel(application: Application) : AndroidViewModel(application) {
 
-    // one thread for the db, keeps the writes in order
-    private val db = Dispatchers.IO.limitedParallelism(1)
+    private val store = TabletStore.get(application)
 
-    private val database = lazy { LocalDatabase.open(application) }
+    private val error = MutableStateFlow<String?>(null)
 
-    private val reports by lazy { ReportService(database.value) }
+    val state: StateFlow<ReportsUiState> = combine(store.state, error, ::ReportsUiState)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ReportsUiState(store.state.value))
 
-    private val _state = MutableStateFlow(ReportsUiState())
-    val state: StateFlow<ReportsUiState> = _state.asStateFlow()
+    fun createIncident(name: String) = write { createIncident(name) }
 
-    init {
-        val node = NodeId(DeviceIdentity.get(application))
-        onDb { ReplicaStateRepository(database.value).enrol(node) }
-    }
+    fun createReport(incident: UUID, values: Map<Field, FieldValue> = emptyMap()) = write { createReport(incident, values) }
 
-    fun createReport(incident: String) = onDb {
-        reports.createReport(UUID.fromString(incident.trim()))
-    }
+    fun setField(record: RecordRef, field: Field, value: FieldValue) = write { setField(record, field, value) }
 
-    fun setSeverity(report: UUID, severity: Int) = onDb {
-        reports.setSeverity(report, severity)
-    }
+    fun resolveConflict(record: RecordRef, field: Field, value: FieldValue) = write { resolveConflict(record, field, value) }
 
-    private fun onDb(block: () -> Unit) {
-        viewModelScope.launch(db) {
-            try {
-                block()
-                _state.value = ReportsUiState(reports.reports())
+    private fun write(block: ReportService.() -> Event) {
+        viewModelScope.launch {
+            error.value = try {
+                store.write(block)
+                null
             } catch (e: IllegalArgumentException) {
-                _state.update { it.copy(error = e.message) }
+                e.message
             }
         }
-    }
-
-    override fun onCleared() {
-        if (database.isInitialized()) database.value.close()
     }
 
 }

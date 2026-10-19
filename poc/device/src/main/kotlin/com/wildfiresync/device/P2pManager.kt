@@ -34,8 +34,8 @@ private val STRATEGY = Strategy.P2P_CLUSTER
 
 /**
  * Wraps the Nearby Connections API for this proof of concept: discover, connect,
- * and exchange one test payload. No persistence and no merge logic yet, both are
- * a separate follow-up task once this is proven on real hardware.
+ * and move byte payloads. It does not interpret them, PeerSync and the experiment
+ * plug in through the callbacks.
  */
 class P2pManager(private val context: Context, private val localName: String) {
 
@@ -53,6 +53,9 @@ class P2pManager(private val context: Context, private val localName: String) {
     // Lets the P2P experiment take its own payloads before they reach onPayload.
     // Returns true when it consumed the payload.
     var experimentHandler: ((peerName: String, bytes: ByteArray) -> Boolean)? = null
+
+    // Called with the advertised name of every peer once its connection is up.
+    var onPeerConnected: ((peerName: String) -> Unit)? = null
 
     // Called when a payload we sent has ended: true for success, false for failure or cancellation.
     var onTransferEnded: ((payloadId: Long, success: Boolean) -> Unit)? = null
@@ -97,6 +100,7 @@ class P2pManager(private val context: Context, private val localName: String) {
                     connectedPeers.add(name)
                 }
                 status.value = "Connected to $name"
+                onPeerConnected?.invoke(name)
                 // Stop actively searching once connected, saves battery and radio use.
                 connectionsClient.stopAdvertising()
                 connectionsClient.stopDiscovery()
@@ -217,12 +221,13 @@ class P2pManager(private val context: Context, private val localName: String) {
         status.value = "Idle"
     }
 
-    /** Sends the bytes to every connected peer. Returns false when nobody is connected. */
-    fun send(bytes: ByteArray): Boolean {
-        if (connectedEndpointIds.isEmpty()) {
+    /** Sends the bytes to one connected peer, by its advertised name. Returns false when it is not connected. */
+    fun send(peerName: String, bytes: ByteArray): Boolean {
+        val endpoints = connectedEndpointIds.filter { endpointNames[it] == peerName }
+        if (endpoints.isEmpty()) {
             return false
         }
-        connectionsClient.sendPayload(connectedEndpointIds.toList(), Payload.fromBytes(bytes))
+        connectionsClient.sendPayload(endpoints, Payload.fromBytes(bytes))
         return true
     }
 
