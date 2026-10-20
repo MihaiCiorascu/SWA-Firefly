@@ -8,6 +8,7 @@ import com.wildfiresync.core.schema.Field;
 import com.wildfiresync.core.schema.FieldValue;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,6 +20,7 @@ import org.junit.jupiter.api.Test;
  * <ul>
  * <li>Equal severity written on two devices: both end with the same value, credited to the lower event id.</li>
  * <li>A resolution written by a device that saw only one of two conflicting values: the other value stays in conflict with the resolution.</li>
+ * <li>Two creates of one record with different immutable values: the lower event id wins on every device.</li>
  * </ul>
  */
 class EdgeCaseTests {
@@ -89,6 +91,22 @@ class EdgeCaseTests {
 		}
 		assertEquals(alpha.world(), bravo.world());
 		assertEquals(alpha.world(), charlie.world());
+	}
+
+	@Test
+	void twoCreatesWithDifferentImmutableValuesSettleOnTheLowerEventId() {
+		UUID firstIncident = new UUID(8, 2);
+		UUID secondIncident = new UUID(8, 3);
+		Event first = alpha.create(REPORT, Map.of(Field.REPORT_INCIDENT_ID, new FieldValue.Reference(firstIncident)));
+		Event second = bravo.create(REPORT, Map.of(Field.REPORT_INCIDENT_ID, new FieldValue.Reference(secondIncident)));
+
+		reconnect();
+
+		boolean alphaIsLower = first.eventId().compareTo(second.eventId()) < 0;
+		FieldValue expected = new FieldValue.Reference(alphaIsLower ? firstIncident : secondIncident);
+		assertEquals(expected, settledOn(alpha, Field.REPORT_INCIDENT_ID).value());
+		assertEquals(expected, settledOn(bravo, Field.REPORT_INCIDENT_ID).value());
+		assertEquals(alpha.world(), bravo.world());
 	}
 
 }
