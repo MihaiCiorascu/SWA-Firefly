@@ -1,7 +1,9 @@
 package com.wildfiresync.core;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.wildfiresync.core.schema.Event;
 import com.wildfiresync.core.schema.Field;
@@ -21,6 +23,7 @@ import org.junit.jupiter.api.Test;
  * <li>Equal severity written on two devices: both end with the same value, credited to the lower event id.</li>
  * <li>A resolution written by a device that saw only one of two conflicting values: the other value stays in conflict with the resolution.</li>
  * <li>Two creates of one record with different immutable values: the lower event id wins on every device.</li>
+ * <li>A field write that arrives before the create of its record: the world is the same in both delivery orders.</li>
  * </ul>
  */
 class EdgeCaseTests {
@@ -107,6 +110,23 @@ class EdgeCaseTests {
 		assertEquals(expected, settledOn(alpha, Field.REPORT_INCIDENT_ID).value());
 		assertEquals(expected, settledOn(bravo, Field.REPORT_INCIDENT_ID).value());
 		assertEquals(alpha.world(), bravo.world());
+	}
+
+	@Test
+	void aFieldWriteThatArrivesBeforeItsCreateGivesTheSameWorldInBothOrders() {
+		UUID incident = new UUID(8, 2);
+		Event create = alpha.create(REPORT, Map.of(Field.REPORT_INCIDENT_ID, new FieldValue.Reference(incident)));
+		Event write = alpha.set(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Fire crossed the ridge"));
+
+		bravo.receive(write);
+		assertFalse(bravo.world().record(REPORT).orElseThrow().created());
+		bravo.receive(create);
+
+		charlie.receive(create);
+		charlie.receive(write);
+
+		assertTrue(bravo.world().record(REPORT).orElseThrow().created());
+		assertEquals(charlie.world(), bravo.world());
 	}
 
 }
