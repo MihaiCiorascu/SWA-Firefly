@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Test;
  *
  * <ul>
  * <li>Equal severity written on two devices: both end with the same value, credited to the lower event id.</li>
+ * <li>A resolution written by a device that saw only one of two conflicting values: the other value stays in conflict with the resolution.</li>
  * </ul>
  */
 class EdgeCaseTests {
@@ -28,21 +29,30 @@ class EdgeCaseTests {
 
 	private SimulatedDevice bravo;
 
+	private SimulatedDevice charlie;
+
 	@BeforeEach
-	void twoDevicesOffline() {
+	void devicesOffline() {
 		alpha = new SimulatedDevice("tablet-a", 1);
 		bravo = new SimulatedDevice("tablet-b", 2);
+		charlie = new SimulatedDevice("tablet-c", 3);
 	}
 
 	private void reconnect() {
 		List<Event> inFlight = new ArrayList<>(alpha.log());
 		inFlight.addAll(bravo.log());
+		inFlight.addAll(charlie.log());
 		alpha.receiveAll(inFlight);
 		bravo.receiveAll(inFlight);
+		charlie.receiveAll(inFlight);
 	}
 
 	private Resolution.Settled settledOn(SimulatedDevice device, Field field) {
 		return assertInstanceOf(Resolution.Settled.class, device.resolution(REPORT, field).orElseThrow());
+	}
+
+	private Resolution.Conflicted conflictOn(SimulatedDevice device, Field field) {
+		return assertInstanceOf(Resolution.Conflicted.class, device.resolution(REPORT, field).orElseThrow());
 	}
 
 	@Test
@@ -58,6 +68,27 @@ class EdgeCaseTests {
 		assertEquals(new FieldValue.Num(5), onAlpha.value());
 		assertEquals(onAlpha, onBravo);
 		assertEquals(Optional.of(lower), onAlpha.source());
+	}
+
+	@Test
+	void aResolutionThatSawOnlyOneOfTwoValuesLeavesTheOtherInConflict() {
+		alpha.set(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Fire crossed the ridge"));
+		bravo.set(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Evacuation route B blocked"));
+		// charlie got alpha's value only, so its resolution covers that one and not bravo's
+		charlie.receive(alpha.log().getFirst());
+		charlie.settle(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Agreed wording"));
+
+		reconnect();
+
+		List<FieldValue> expected = List.of(new FieldValue.Text("Evacuation route B blocked"),
+				new FieldValue.Text("Agreed wording"));
+		for (SimulatedDevice device : List.of(alpha, bravo, charlie)) {
+			List<FieldValue> values = conflictOn(device, Field.REPORT_DESCRIPTION).candidates().stream()
+					.map(Candidate::value).toList();
+			assertEquals(expected, values);
+		}
+		assertEquals(alpha.world(), bravo.world());
+		assertEquals(alpha.world(), charlie.world());
 	}
 
 }
