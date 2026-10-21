@@ -18,6 +18,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -30,6 +31,7 @@ import org.junit.jupiter.api.Test;
  * <li>A field write that arrives before the create of its record: the world is the same in both delivery orders.</li>
  * <li>A field from a newer app version: the merge refuses it and the world stays as it was.</li>
  * <li>A resolution when there is no conflict: it acts like a plain write.</li>
+ * <li>Two events that each say they saw the other (known gap, the test is disabled): resolving throws today, both values should stay in conflict.</li>
  * </ul>
  */
 class EdgeCaseTests {
@@ -158,6 +160,22 @@ class EdgeCaseTests {
 		Resolution.Settled onAlpha = settledOn(alpha, Field.REPORT_DESCRIPTION);
 		assertEquals(new FieldValue.Text("Fire crossed the ridge, wind turning"), onAlpha.value());
 		assertEquals(onAlpha, settledOn(bravo, Field.REPORT_DESCRIPTION));
+	}
+
+	@Disabled("known gap: resolving throws IllegalStateException when two events each say they saw the other")
+	@Test
+	void twoEventsThatEachSayTheySawTheOtherStayInConflict() {
+		Event fromA = new Event(new UUID(8, 11), REPORT.id(), REPORT.type(), Event.Operation.SET_FIELD,
+				Field.REPORT_DESCRIPTION.key(), "from a", "crew-a", Instant.EPOCH, new OpId(new NodeId("tablet-a"), 1),
+				new CausalContext(Map.of(new NodeId("tablet-b"), 1L)), Set.of());
+		Event fromB = new Event(new UUID(8, 12), REPORT.id(), REPORT.type(), Event.Operation.SET_FIELD,
+				Field.REPORT_DESCRIPTION.key(), "from b", "crew-b", Instant.EPOCH, new OpId(new NodeId("tablet-b"), 1),
+				new CausalContext(Map.of(new NodeId("tablet-a"), 1L)), Set.of());
+
+		alpha.receive(fromA);
+		alpha.receive(fromB);
+
+		assertEquals(2, conflictOn(alpha, Field.REPORT_DESCRIPTION).candidates().size());
 	}
 
 }
