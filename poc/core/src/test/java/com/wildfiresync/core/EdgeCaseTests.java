@@ -3,15 +3,19 @@ package com.wildfiresync.core;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.wildfiresync.core.schema.CausalContext;
 import com.wildfiresync.core.schema.Event;
 import com.wildfiresync.core.schema.Field;
 import com.wildfiresync.core.schema.FieldValue;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,6 +28,7 @@ import org.junit.jupiter.api.Test;
  * <li>A resolution written by a device that saw only one of two conflicting values: the other value stays in conflict with the resolution.</li>
  * <li>Two creates of one record with different immutable values: the lower event id wins on every device.</li>
  * <li>A field write that arrives before the create of its record: the world is the same in both delivery orders.</li>
+ * <li>A field from a newer app version: the merge refuses it and the world stays as it was.</li>
  * </ul>
  */
 class EdgeCaseTests {
@@ -127,6 +132,19 @@ class EdgeCaseTests {
 
 		assertTrue(bravo.world().record(REPORT).orElseThrow().created());
 		assertEquals(charlie.world(), bravo.world());
+	}
+
+	@Test
+	void aFieldFromANewerAppVersionIsRefusedAndLeavesTheWorldAlone() {
+		alpha.set(REPORT, Field.REPORT_SEVERITY, new FieldValue.Num(5));
+		World before = alpha.world();
+		Event fromNewerVersion = new Event(new UUID(8, 9), REPORT.id(), REPORT.type(), Event.Operation.SET_FIELD,
+				"windSpeed", "40", "crew-z", Instant.EPOCH, new OpId(new NodeId("tablet-z"), 1), CausalContext.EMPTY,
+				Set.of());
+
+		assertThrows(IllegalArgumentException.class, () -> MergeCore.validate(fromNewerVersion));
+		assertThrows(IllegalArgumentException.class, () -> MergeCore.apply(before, fromNewerVersion));
+		assertEquals(before, alpha.world());
 	}
 
 }
