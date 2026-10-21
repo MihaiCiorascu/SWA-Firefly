@@ -29,6 +29,7 @@ import org.junit.jupiter.api.Test;
  * <li>Two creates of one record with different immutable values: the lower event id wins on every device.</li>
  * <li>A field write that arrives before the create of its record: the world is the same in both delivery orders.</li>
  * <li>A field from a newer app version: the merge refuses it and the world stays as it was.</li>
+ * <li>A resolution when there is no conflict: it acts like a plain write.</li>
  * </ul>
  */
 class EdgeCaseTests {
@@ -145,6 +146,18 @@ class EdgeCaseTests {
 		assertThrows(IllegalArgumentException.class, () -> MergeCore.validate(fromNewerVersion));
 		assertThrows(IllegalArgumentException.class, () -> MergeCore.apply(before, fromNewerVersion));
 		assertEquals(before, alpha.world());
+	}
+
+	@Test
+	void aResolutionWithoutAConflictActsLikeAPlainWrite() {
+		alpha.set(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Fire crossed the ridge"));
+		alpha.settle(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Fire crossed the ridge, wind turning"));
+
+		reconnect();
+
+		Resolution.Settled onAlpha = settledOn(alpha, Field.REPORT_DESCRIPTION);
+		assertEquals(new FieldValue.Text("Fire crossed the ridge, wind turning"), onAlpha.value());
+		assertEquals(onAlpha, settledOn(bravo, Field.REPORT_DESCRIPTION));
 	}
 
 }
