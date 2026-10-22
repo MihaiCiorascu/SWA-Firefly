@@ -6,6 +6,7 @@ stages:
 workflow:
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_PIPELINE_SOURCE == "web"
     - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
       when: never
     - if: $CI_COMMIT_BRANCH
@@ -31,6 +32,9 @@ variables:
       - poc/.gradle/wrapper
       - poc/.gradle/caches
     policy: pull
+
+.gradle-tests:
+  extends: .gradle
   artifacts:
     when: always
     expire_in: 1 week
@@ -65,20 +69,20 @@ build:
     - ./gradlew :core:assemble :server:assemble :experiments:assemble
 
 core:
-  extends: .gradle
+  extends: .gradle-tests
   stage: test
   script:
     - ./gradlew :core:test :experiments:test
 
 server:unit:
-  extends: .gradle
+  extends: .gradle-tests
   stage: test
   script:
     - ./gradlew :server:test --tests '*OperationEventConsumerTest'
 
 device:
   extends:
-    - .gradle
+    - .gradle-tests
     - .code-only
   stage: test
   variables:
@@ -116,13 +120,14 @@ device:
         mv /tmp/cmdline-tools/cmdline-tools "$ANDROID_HOME/cmdline-tools/latest"
       fi
     - export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
-    - yes | sdkmanager --licenses > /dev/null
+    - |
+      for i in $(seq 20); do echo y; done | sdkmanager --licenses > /dev/null
   script:
     - ./gradlew :device:testDebugUnitTest
 
 server:context:
   extends:
-    - .gradle
+    - .gradle-tests
     - .code-only
   stage: integration
   services:
@@ -151,7 +156,7 @@ server:context:
 
 server:merge:
   extends:
-    - .gradle
+    - .gradle-tests
     - .code-only
   stage: integration
   services:
