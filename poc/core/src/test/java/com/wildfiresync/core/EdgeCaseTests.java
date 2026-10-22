@@ -31,7 +31,8 @@ import org.junit.jupiter.api.Test;
  * <li>A field write that arrives before the create of its record: the world is the same in both delivery orders.</li>
  * <li>A field from a newer app version: the merge refuses it and the world stays as it was.</li>
  * <li>A resolution when there is no conflict: it acts like a plain write.</li>
- * <li>Two events that each say they saw the other (known gap, the test is disabled): resolving throws today, both values should stay in conflict.</li>
+ * <li>Three values written on three devices: all of them stay in conflict, in the same order on every device.</li>
+ * <li>A write made offline before a resolution: it opens the conflict again when it arrives after the resolution.</li>
  * </ul>
  */
 class EdgeCaseTests {
@@ -160,6 +161,26 @@ class EdgeCaseTests {
 		Resolution.Settled onAlpha = settledOn(alpha, Field.REPORT_DESCRIPTION);
 		assertEquals(new FieldValue.Text("Fire crossed the ridge, wind turning"), onAlpha.value());
 		assertEquals(onAlpha, settledOn(bravo, Field.REPORT_DESCRIPTION));
+	}
+
+	@Test
+	void threeValuesWrittenOnThreeDevicesAllStayInConflict() {
+		alpha.set(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Fire crossed the ridge"));
+		bravo.set(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Evacuation route B blocked"));
+		charlie.set(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Power line down"));
+
+		reconnect();
+
+		List<FieldValue> onAlpha = conflictOn(alpha, Field.REPORT_DESCRIPTION).candidates().stream()
+				.map(Candidate::value).toList();
+		assertEquals(3, onAlpha.size());
+		for (SimulatedDevice device : List.of(bravo, charlie)) {
+			List<FieldValue> values = conflictOn(device, Field.REPORT_DESCRIPTION).candidates().stream()
+					.map(Candidate::value).toList();
+			assertEquals(onAlpha, values);
+		}
+		assertEquals(alpha.world(), bravo.world());
+		assertEquals(alpha.world(), charlie.world());
 	}
 
 	@Disabled("known gap: resolving throws IllegalStateException when two events each say they saw the other")
