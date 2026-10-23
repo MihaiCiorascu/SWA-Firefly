@@ -44,7 +44,7 @@ Radu Zidaru
 - [4. Architectural Decision Records](#4-architectural-decision-records)
   - [4.1 ADR 1: How Events Travel from Device to Server](#41-adr-1-how-events-travel-from-device-to-server)
   - [4.2 ADR 2: How Reports Travel from Server to Device](#42-adr-2-how-reports-travel-from-server-to-device)
-  - [4.3 ADR 3: How events are authenticated](#43-adr-3-how-events-are-authenticated)
+  - [4.3 ADR 3: How Events are Authenticated](#43-adr-3-how-events-are-authenticated)
 - [5. Architectural Experiments](#5-architectural-experiments)
   - [5.1 Experiment 1: How far does the P2P link reach?](#51-experiment-1-how-far-does-the-p2p-link-reach)
   - [5.2 Experiment 2: How long does a sync take?](#52-experiment-2-how-long-does-a-sync-take)
@@ -57,7 +57,7 @@ Climate change has made major natural disasters common. First responders often w
 
 We propose Firefly, an app that lets emergency personnel record and edit incident reports from the field. The system works offline: personnel can create and edit reports with no connection, and a backend merges conflicting edits once connectivity returns. Since more than one person can edit the same report while offline, we designed a conflict-resolution policy that avoids losing safety-critical information. We also added peer-to-peer sync between devices that are near each other, so personnel get the most complete picture even with low connectivity.
 
-Chapter 3 covers the architecture. Chapter 4 records three architectural decisions. Chapter 5 designs two experiments. Section 2.8 covers the roadmap.
+Chapter 3 covers the architecture. Chapter 4 records three architectural decisions. Chapter 5 describes two experiments. Section 2.8 covers the roadmap.
 
 ## 2. Problem and Context Analysis
 
@@ -71,7 +71,7 @@ Firefly lets field workers share incident reports even when the usual channels a
 
 ### 2.2 Context View
 
-The Context View shows the boundary between the system and its environment. As the lecture says it, "you design the system, the context is a given" [<a href="#11">11</a>].
+The Context View shows the boundary between the system and its environment. As the lecture puts it, "you design the system, the context is a given" [<a href="#11">11</a>].
 
 Firefly's scope is to keep field reports in sync, so every device ends up with the same complete record, connected or not. The boundary is the Incident Command Post: the server is a physical machine at the ICP, not a cloud endpoint, going beyond it is future work. Voice radio and crew assignment stay human decisions, outside our scope. Our job is narrower: make sure command staff act on one complete record, not a partial picture.
 
@@ -276,7 +276,6 @@ The component view covers the tablet app and the ICP server, which hold most of 
   <img title="" src="../report/figures/c4-component-server.png" alt="ICP server component diagram">
   <figcaption><em>Figure 9: Components of the ICP server.</em></figcaption>
 </figure>
-
 
 ### 3.6 Code View
 
