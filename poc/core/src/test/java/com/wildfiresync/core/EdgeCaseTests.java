@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -33,6 +34,7 @@ import org.junit.jupiter.api.Test;
  * <li>A resolution when there is no conflict: it acts like a plain write.</li>
  * <li>Three values written on three devices: all of them stay in conflict, in the same order on every device.</li>
  * <li>A write made offline before a resolution: it opens the conflict again when it arrives after the resolution.</li>
+ * <li>The same text written on two devices: today they stay in conflict as two identical values (known gap, the test is disabled).</li>
  * </ul>
  */
 class EdgeCaseTests {
@@ -178,6 +180,32 @@ class EdgeCaseTests {
 			List<FieldValue> values = conflictOn(device, Field.REPORT_DESCRIPTION).candidates().stream()
 					.map(Candidate::value).toList();
 			assertEquals(onAlpha, values);
+		}
+		assertEquals(alpha.world(), bravo.world());
+		assertEquals(alpha.world(), charlie.world());
+	}
+
+	@Test
+	void aWriteMadeOfflineBeforeAResolutionOpensTheConflictAgainWhenItArrivesLate() {
+		alpha.set(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Fire crossed the ridge"));
+		charlie.set(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Power line down"));
+		// bravo wrote before all of this and has been offline since
+		bravo.set(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Evacuation route B blocked"));
+		alpha.receiveAll(charlie.log());
+		charlie.receiveAll(alpha.log());
+		alpha.settle(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Agreed wording"));
+		charlie.receiveAll(alpha.log());
+		assertEquals(new FieldValue.Text("Agreed wording"), settledOn(alpha, Field.REPORT_DESCRIPTION).value());
+		assertEquals(new FieldValue.Text("Agreed wording"), settledOn(charlie, Field.REPORT_DESCRIPTION).value());
+
+		reconnect();
+
+		Set<FieldValue> expected = Set.of(new FieldValue.Text("Evacuation route B blocked"),
+				new FieldValue.Text("Agreed wording"));
+		for (SimulatedDevice device : List.of(alpha, bravo, charlie)) {
+			Set<FieldValue> values = conflictOn(device, Field.REPORT_DESCRIPTION).candidates().stream()
+					.map(Candidate::value).collect(Collectors.toSet());
+			assertEquals(expected, values);
 		}
 		assertEquals(alpha.world(), bravo.world());
 		assertEquals(alpha.world(), charlie.world());
