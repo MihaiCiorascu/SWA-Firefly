@@ -77,7 +77,7 @@ Firefly's scope is to keep field reports in sync, so every device ends up with t
 
 Crew leaders use tablets and record offline by default. A device syncs automatically when it reconnects, either to the ICP or to another tablet. Division leaders and command staff see the current zone-scoped record through the ICP server. When two crews meet, their leaders can opt in to peer-to-peer sync, so tablets never exchange data without the crews knowing.
 
-Two existing tools show this gap. ArcGIS Field Maps resolves concurrent edits with last-write-wins, and a real conflict still needs a database administrator to fix it by hand. ATAK with goTenna or Meshtastic sends append-only messages, so a conflict never happens there either. Our problem, merging concurrent offline edits automatically, sits exactly between the two.
+Two existing tools show this gap. ArcGIS Field Maps lets crews edit offline, but its sync "has no awareness of conflict management" and follows a "last in, wins" model, so whichever device syncs last overwrites an earlier edit to the same feature, and keeping users from overwriting each other is left to planning [<a href="#20">20</a>][<a href="#21">21</a>]. ATAK paired with mesh radios such as goTenna or Meshtastic works with no network at all, but it only forwards messages: positions, map markers and chat are each sent over the mesh as they are made [<a href="#22">22</a>][<a href="#23">23</a>], and neither describes a way to reconcile two crews' different reports of the same thing. Our problem, merging concurrent offline edits to the same record, sits between the two.
 
 We depend on GPS accuracy for zone subscription, covered more in the Wardley Map below and in Section 3.1. A fire-authority record system and a weather feed are future work, named here only so the figure stays accurate.
 
@@ -415,3 +415,11 @@ We used only Samsung devices. The walk was in clear line of sight, which is the 
 <a id="18">[18]</a> Google, "Nearby Connections overview," Developers.google.com. https://developers.google.com/nearby/connections/overview (accessed Oct. 11, 2026)
 
 <a id="19">[19]</a> H3, "Introduction." H3geo.org. https://h3geo.org/docs/ (accessed Oct. 13, 2026)
+
+<a id="20">[20]</a> Esri, "Go off the grid with ArcGIS Pro: Offline editing with sync enabled feature services," ArcGIS Blog, Esri.com. https://www.esri.com/arcgis-blog/products/arcgis-pro/data-management/off-the-grid-arcgis-pro (accessed Oct. 23, 2026)
+
+<a id="21">[21]</a> Esri, "Using sync," ArcGIS REST APIs, Developers.arcgis.com. https://developers.arcgis.com/rest/services-reference/enterprise/using-sync/ (accessed Oct. 23, 2026)
+
+<a id="22">[22]</a> Meshtastic, "ATAK Plugin," Meshtastic.org. https://meshtastic.org/docs/software/integrations/integrations-atak-plugin/ (accessed Oct. 23, 2026)
+
+<a id="23">[23]</a> S. W. Miller, "This small mesh networking device from goTenna could unblock signal-denied warfare environments," Armada International, Sep. 9, 2019. https://www.armadainternational.com/2019/09/this-small-mesh-networking-device-from-gotenna-could-unblock-signal-denied-warfare-environments/ (accessed Oct. 23, 2026)
