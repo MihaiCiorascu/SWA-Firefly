@@ -118,3 +118,21 @@ hours:
 - team meeting (sat 17 oct): 2h
 
 total: 25h
+
+## W8 (19 - 25 oct)
+
+On Monday Radu's DVVs were ready. I merged them into my branches and dropped the parts of my work that the DVVs now cover: my causal-context replacement and my supersedes based RESOLVE_CONFLICT. I also turned on the test that a resolution cannot settle a value it never received, and lined up my merge core and tablet branches so they could all go into master.
+
+I also did the peer reviews of team 21 and team 23. I read their reports and PoCs and submitted the answers.
+
+On Friday we had a 30 min meeting with our TA. We should add a PoC section, write each experiment up in four parts (introduction, why, the experiment, discussion) and keep the report under 9000 words. For the final presentation we can follow the structure of the report and talk over a recording of the demo. After that I started working on the final presentation. I got feedback on the first draft of the slides and worked it in.
+
+hours:
+
+- integrating the DVVs, removing my overlapping code, enabling the test, merging the branches (mon 19 oct): 2.5h
+- peer reviews of team 21 and team 23: 6h
+- TA meeting (fri 23 oct): 0.5h
+- starting on the final presentation: 2h
+- feedback on the first draft of the slides and working it in: 2h
+
+total: 13h
