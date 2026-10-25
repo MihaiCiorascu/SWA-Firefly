@@ -44,7 +44,7 @@ Radu Zidaru
 - [4. Architectural Decision Records](#4-architectural-decision-records)
   - [4.1 ADR 1: How Events Travel from Device to Server](#41-adr-1-how-events-travel-from-device-to-server)
   - [4.2 ADR 2: How Reports Travel from Server to Device](#42-adr-2-how-reports-travel-from-server-to-device)
-  - [4.3 ADR 3: How events are authenticated](#43-adr-3-how-events-are-authenticated)
+  - [4.3 ADR 3: How Events are Authenticated](#43-adr-3-how-events-are-authenticated)
 - [5. Architectural Experiments](#5-architectural-experiments)
   - [5.1 Experiment 1: How far does the P2P link reach?](#51-experiment-1-how-far-does-the-p2p-link-reach)
   - [5.2 Experiment 2: How long does a sync take?](#52-experiment-2-how-long-does-a-sync-take)
@@ -57,7 +57,7 @@ Climate change has made major natural disasters common. First responders often w
 
 We propose Firefly, an app that lets emergency personnel record and edit incident reports from the field. The system works offline: personnel can create and edit reports with no connection, and a backend merges conflicting edits once connectivity returns. Since more than one person can edit the same report while offline, we designed a conflict-resolution policy that avoids losing safety-critical information. We also added peer-to-peer sync between devices that are near each other, so personnel get the most complete picture even with low connectivity.
 
-Chapter 3 covers the architecture. Chapter 4 records three architectural decisions. Chapter 5 designs two experiments. Section 2.8 covers the roadmap.
+Chapter 3 covers the architecture. Chapter 4 records three architectural decisions. Chapter 5 describes two experiments. Section 2.8 covers the roadmap.
 
 ## 2. Problem and Context Analysis
 
@@ -71,13 +71,13 @@ Firefly lets field workers share incident reports even when the usual channels a
 
 ### 2.2 Context View
 
-The Context View shows the boundary between the system and its environment. As the lecture says it, "you design the system, the context is a given" [<a href="#11">11</a>].
+The Context View shows the boundary between the system and its environment. As the lecture puts it, "you design the system, the context is a given" [<a href="#11">11</a>].
 
 Firefly's scope is to keep field reports in sync, so every device ends up with the same complete record, connected or not. The boundary is the Incident Command Post: the server is a physical machine at the ICP, not a cloud endpoint, going beyond it is future work. Voice radio and crew assignment stay human decisions, outside our scope. Our job is narrower: make sure command staff act on one complete record, not a partial picture.
 
 Crew leaders use tablets and record offline by default. A device syncs automatically when it reconnects, either to the ICP or to another tablet. Division leaders and command staff see the current zone-scoped record through the ICP server. When two crews meet, their leaders can opt in to peer-to-peer sync, so tablets never exchange data without the crews knowing.
 
-Two existing tools show this gap. ArcGIS Field Maps resolves concurrent edits with last-write-wins, and a real conflict still needs a database administrator to fix it by hand. ATAK with goTenna or Meshtastic sends append-only messages, so a conflict never happens there either. Our problem, merging concurrent offline edits automatically, sits exactly between the two.
+Two existing tools show this gap. ArcGIS Field Maps lets crews edit offline, but its sync "has no awareness of conflict management" and follows a "last in, wins" model, so whichever device syncs last overwrites an earlier edit to the same feature, and keeping users from overwriting each other is left to planning [<a href="#20">20</a>][<a href="#21">21</a>]. ATAK paired with mesh radios such as goTenna or Meshtastic works with no network at all, but it only forwards messages: positions, map markers and chat are each sent over the mesh as they are made [<a href="#22">22</a>][<a href="#23">23</a>], and neither describes a way to reconcile two crews' different reports of the same thing. Our problem, merging concurrent offline edits to the same record, sits between the two.
 
 We depend on GPS accuracy for zone subscription, covered more in the Wardley Map below and in Section 3.1. A fire-authority record system and a weather feed are future work, named here only so the figure stays accurate.
 
@@ -277,7 +277,6 @@ The component view covers the tablet app and the ICP server, which hold most of 
   <figcaption><em>Figure 9: Components of the ICP server.</em></figcaption>
 </figure>
 
-
 ### 3.6 Code View
 
 Figure 6 already gives the class level for Field Reporting, the core of the system. The other components are thin enough that a class diagram would add nothing the component view does not show, and one can be generated from the code if needed.
@@ -416,3 +415,11 @@ We used only Samsung devices. The walk was in clear line of sight, which is the 
 <a id="18">[18]</a> Google, "Nearby Connections overview," Developers.google.com. https://developers.google.com/nearby/connections/overview (accessed Oct. 11, 2026)
 
 <a id="19">[19]</a> H3, "Introduction." H3geo.org. https://h3geo.org/docs/ (accessed Oct. 13, 2026)
+
+<a id="20">[20]</a> Esri, "Go off the grid with ArcGIS Pro: Offline editing with sync enabled feature services," ArcGIS Blog, Esri.com. https://www.esri.com/arcgis-blog/products/arcgis-pro/data-management/off-the-grid-arcgis-pro (accessed Oct. 23, 2026)
+
+<a id="21">[21]</a> Esri, "Using sync," ArcGIS REST APIs, Developers.arcgis.com. https://developers.arcgis.com/rest/services-reference/enterprise/using-sync/ (accessed Oct. 23, 2026)
+
+<a id="22">[22]</a> Meshtastic, "ATAK Plugin," Meshtastic.org. https://meshtastic.org/docs/software/integrations/integrations-atak-plugin/ (accessed Oct. 23, 2026)
+
+<a id="23">[23]</a> S. W. Miller, "This small mesh networking device from goTenna could unblock signal-denied warfare environments," Armada International, Sep. 9, 2019. https://www.armadainternational.com/2019/09/this-small-mesh-networking-device-from-gotenna-could-unblock-signal-denied-warfare-environments/ (accessed Oct. 23, 2026)
