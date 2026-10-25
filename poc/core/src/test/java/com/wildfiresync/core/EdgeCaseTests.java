@@ -35,6 +35,7 @@ import org.junit.jupiter.api.Test;
  * <li>Three values written on three devices: all of them stay in conflict, in the same order on every device.</li>
  * <li>A write made offline before a resolution: it opens the conflict again when it arrives after the resolution.</li>
  * <li>The same text written on two devices: today they stay in conflict as two identical values (known gap, the test is disabled).</li>
+ * <li>Two events with the same dot but different event ids (a device that lost its data): both values stay in conflict, in either delivery order.</li>
  * </ul>
  */
 class EdgeCaseTests {
@@ -209,6 +210,19 @@ class EdgeCaseTests {
 		}
 		assertEquals(alpha.world(), bravo.world());
 		assertEquals(alpha.world(), charlie.world());
+	}
+
+	@Disabled("known gap: the same text written on two devices is shown as a conflict between two identical values")
+	@Test
+	void theSameTextWrittenOnTwoDevicesNeedsNoResolution() {
+		alpha.set(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Fire crossed the ridge"));
+		bravo.set(REPORT, Field.REPORT_DESCRIPTION, new FieldValue.Text("Fire crossed the ridge"));
+
+		reconnect();
+
+		Resolution.Settled onAlpha = settledOn(alpha, Field.REPORT_DESCRIPTION);
+		assertEquals(new FieldValue.Text("Fire crossed the ridge"), onAlpha.value());
+		assertEquals(onAlpha, settledOn(bravo, Field.REPORT_DESCRIPTION));
 	}
 
 	@Disabled("known gap: resolving throws IllegalStateException when two events each say they saw the other")
