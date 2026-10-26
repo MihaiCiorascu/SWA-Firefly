@@ -36,6 +36,7 @@ import org.junit.jupiter.api.Test;
  * <li>A write made offline before a resolution: it opens the conflict again when it arrives after the resolution.</li>
  * <li>The same text written on two devices: today they stay in conflict as two identical values (known gap, the test is disabled).</li>
  * <li>Two events with the same dot but different event ids (a device that lost its data): both values stay in conflict, in either delivery order.</li>
+ * <li>Two events that each say they saw the other (known gap, the test is disabled): resolving throws today, both values should stay in conflict.</li>
  * </ul>
  */
 class EdgeCaseTests {
@@ -223,6 +224,26 @@ class EdgeCaseTests {
 		Resolution.Settled onAlpha = settledOn(alpha, Field.REPORT_DESCRIPTION);
 		assertEquals(new FieldValue.Text("Fire crossed the ridge"), onAlpha.value());
 		assertEquals(onAlpha, settledOn(bravo, Field.REPORT_DESCRIPTION));
+	}
+
+	@Test
+	void twoEventsWithTheSameDotButDifferentEventIdsBothStayInConflict() {
+		// a tablet that lost its data starts counting again and reuses a dot
+		Event before = new Event(new UUID(8, 21), REPORT.id(), REPORT.type(), Event.Operation.SET_FIELD,
+				Field.REPORT_DESCRIPTION.key(), "before the restart", "crew-a", Instant.EPOCH,
+				new OpId(new NodeId("tablet-a"), 1), CausalContext.EMPTY, Set.of());
+		Event after = new Event(new UUID(8, 22), REPORT.id(), REPORT.type(), Event.Operation.SET_FIELD,
+				Field.REPORT_DESCRIPTION.key(), "after the restart", "crew-a", Instant.EPOCH,
+				new OpId(new NodeId("tablet-a"), 1), CausalContext.EMPTY, Set.of());
+
+		World oneWay = MergeCore.applyAll(World.EMPTY, List.of(before, after));
+		World otherWay = MergeCore.applyAll(World.EMPTY, List.of(after, before));
+
+		assertEquals(oneWay, otherWay);
+		Resolution.Conflicted conflict = assertInstanceOf(Resolution.Conflicted.class, MergeCore.resolve(
+				Field.REPORT_DESCRIPTION, oneWay.record(REPORT).orElseThrow().field(Field.REPORT_DESCRIPTION).orElseThrow()));
+		assertEquals(Set.of(new FieldValue.Text("before the restart"), new FieldValue.Text("after the restart")),
+				conflict.candidates().stream().map(Candidate::value).collect(Collectors.toSet()));
 	}
 
 	@Disabled("known gap: resolving throws IllegalStateException when two events each say they saw the other")
