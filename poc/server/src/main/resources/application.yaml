@@ -7,7 +7,16 @@ spring:
     password: postgres
   jpa:
     hibernate:
-      ddl-auto: update
+      # Flyway owns the schema. Letting Hibernate derive it from the entities instead would create
+      # tables that do not match db/migration, and the events table not at all.
+      ddl-auto: none
+  flyway:
+    locations: classpath:db/migration/postgres
+  jackson:
+    datatype:
+      datetime:
+        # the tablet reads createdAt with Instant.parse, so timestamps go out as ISO-8601 text
+        write-dates-as-timestamps: false
 
 wildfiresync:
   nats:

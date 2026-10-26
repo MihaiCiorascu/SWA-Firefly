@@ -10,6 +10,7 @@ import com.wildfiresync.device.storage.ReplicaStateRepository
 import com.wildfiresync.device.storage.StoredIncident
 import com.wildfiresync.device.storage.StoredReport
 import java.util.UUID
+import java.util.concurrent.CopyOnWriteArrayList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -40,9 +41,25 @@ class TabletStore(open: () -> ReportService) {
     private val _state = MutableStateFlow(TabletState())
     val state: StateFlow<TabletState> = _state.asStateFlow()
 
-    /** called on the db thread with every event written on this tablet, so p2p can pass it on */
-    @Volatile
-    var onWritten: ((Event) -> Unit)? = null
+    private val writtenListeners = CopyOnWriteArrayList<(Event) -> Unit>()
+
+    private val receivedListeners = CopyOnWriteArrayList<(List<Event>) -> Unit>()
+
+    /**
+     * called on the db thread with every event written on this tablet, so p2p and the server link can
+     * both pass it on. each listener gets its own registration to close, so one of them going away
+     * never takes the others off with it
+     */
+    fun onWritten(listener: (Event) -> Unit): AutoCloseable {
+        writtenListeners += listener
+        return AutoCloseable { writtenListeners -= listener }
+    }
+
+    /** called on the db thread with the events a sync has just stored, never with ones already held */
+    fun onReceived(listener: (List<Event>) -> Unit): AutoCloseable {
+        receivedListeners += listener
+        return AutoCloseable { receivedListeners -= listener }
+    }
 
     init {
         CoroutineScope(SupervisorJob() + db).launch { refresh() }
@@ -52,15 +69,20 @@ class TabletStore(open: () -> ReportService) {
 
     /** a change made on this tablet */
     suspend fun write(block: ReportService.() -> Event): Event = withContext(db) {
-        service.block().also {
+        service.block().also { event ->
             refresh()
-            onWritten?.invoke(it)
+            writtenListeners.forEach { listener -> listener(event) }
         }
     }
 
     /** events from the server or another tablet */
     suspend fun receive(events: List<Event>): ReportService.Receipt = withContext(db) {
-        service.receive(events).also { if (it.stored.isNotEmpty()) refresh() }
+        service.receive(events).also { receipt ->
+            if (receipt.stored.isNotEmpty()) {
+                refresh()
+                receivedListeners.forEach { listener -> listener(receipt.stored) }
+            }
+        }
     }
 
     private fun refresh() {

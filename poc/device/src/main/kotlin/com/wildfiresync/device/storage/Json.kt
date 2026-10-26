@@ -1,31 +1,23 @@
 package com.wildfiresync.device.storage
 
-import com.wildfiresync.core.NodeId
+import com.wildfiresync.core.StorageJson
 import com.wildfiresync.core.schema.CausalContext
-import org.json.JSONArray
-import org.json.JSONObject
 import java.util.UUID
 
-// TODO agree on these encodings with the server, the schema only says the columns are TEXT
-
+/**
+ * the json in the causal_context and supersedes columns.
+ *
+ * the schema only says those columns are text, so the format lives in core and the server writes the
+ * same bytes. this is here so the storage layer does not reach past the repositories for it
+ */
 internal object Json {
 
-    fun write(context: CausalContext): String {
-        val json = JSONObject()
-        context.counters().entries.sortedBy { it.key }.forEach { (node, counter) -> json.put(node.value(), counter) }
-        return json.toString()
-    }
+    fun write(context: CausalContext): String = StorageJson.writeContext(context)
 
-    fun write(ids: Set<UUID>): String = JSONArray(ids.map { it.toString() }.sorted()).toString()
+    fun write(ids: Set<UUID>): String = StorageJson.writeIds(ids)
 
-    fun readCausalContext(json: String): CausalContext {
-        val counters = JSONObject(json)
-        return CausalContext(counters.keys().asSequence().associate { NodeId(it) to counters.getLong(it) })
-    }
+    fun readCausalContext(json: String): CausalContext = StorageJson.readContext(json)
 
-    fun readUuids(json: String): Set<UUID> {
-        val ids = JSONArray(json)
-        return (0 until ids.length()).map { UUID.fromString(ids.getString(it)) }.toSet()
-    }
+    fun readUuids(json: String): Set<UUID> = StorageJson.readIds(json)
 
 }

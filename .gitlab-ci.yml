@@ -152,28 +152,28 @@ server:context:
       sleep 2
     - ./gradlew :server:test --tests '*ServerApplicationTests'
 
-# server:merge:
-#   extends:
-#     - .gradle-tests
-#     - .code-only
-#   stage: integration
-#   services:
-#     - name: docker:27-dind
-#   variables:
-#     DOCKER_HOST: "tcp://docker:2375"
-#     DOCKER_TLS_CERTDIR: ""
-#     TESTCONTAINERS_HOST_OVERRIDE: "docker"
-#     TESTCONTAINERS_RYUK_DISABLED: "true"
-#   allow_failure: true
-#   script:
-#     - |
-#       if ! timeout 20 bash -c 'until cat < /dev/null > /dev/tcp/docker/2375; do sleep 1; done' 2>/dev/null; then
-#         echo
-#         echo "This runner cannot start containers, so MergeServiceTests cannot run here."
-#         echo "Either register a runner with the docker-in-docker privileged setting, or drop this job"
-#         echo "from .gitlab-ci.yml and run ./gradlew :server:test locally before opening a merge request."
-#         echo "server:context still covers whether the application starts and wires up."
-#         exit 1
-#       fi
-#       echo "Docker is reachable, starting the merge tests"
-#     - ./gradlew :server:test --tests '*MergeServiceTests'
+server:merge:
+  extends:
+    - .gradle-tests
+    - .code-only
+  stage: integration
+  services:
+    - name: docker:27-dind
+  variables:
+    DOCKER_HOST: "tcp://docker:2375"
+    DOCKER_TLS_CERTDIR: ""
+    TESTCONTAINERS_HOST_OVERRIDE: "docker"
+    TESTCONTAINERS_RYUK_DISABLED: "true"
+  allow_failure: true
+  script:
+    - |
+      if ! timeout 20 bash -c 'until cat < /dev/null > /dev/tcp/docker/2375; do sleep 1; done' 2>/dev/null; then
+        echo
+        echo "This runner cannot start containers, so MergeServiceTests cannot run here."
+        echo "Either register a runner with the docker-in-docker privileged setting, or drop this job"
+        echo "from .gitlab-ci.yml and run ./gradlew :server:test locally before opening a merge request."
+        echo "server:context still covers whether the application starts and wires up."
+        exit 1
+      fi
+      echo "Docker is reachable, starting the merge tests"
+    - ./gradlew :server:test --tests '*MergeServiceTests'
