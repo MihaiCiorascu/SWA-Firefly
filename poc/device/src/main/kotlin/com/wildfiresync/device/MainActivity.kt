@@ -140,6 +140,11 @@ private fun requiredPermissions(): Array<String> {
         permissions += Manifest.permission.NEARBY_WIFI_DEVICES
     }
 
+    if (Build.VERSION.SDK_INT >= 37) {
+        // Android 17+ (API 37+): Nearby Connections aborts without it and only reports 8: INTERNAL_ERROR
+        permissions += "android.permission.ACCESS_LOCAL_NETWORK"
+    }
+
     return permissions.toTypedArray()
 }
 
