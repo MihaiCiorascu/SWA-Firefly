@@ -18,11 +18,11 @@ SSE and the NATS JetStream client both give all three. The difference between th
 
 **Consequences.** The tablet only talks to NATS and never calls the server. NATS keeps two message logs, one per direction. Tablets write events to the first and the server reads them (ADR 1). The server writes reports to the second and tablets read them. The server needs no extra service to send reports to tablets.
 
-After each merge, the server finds the H3 hexagon of the report and publishes the full report under a name that holds the hexagon and the report id: `report.<hexagon>.<reportId>`. NATS keeps only the newest message per name, so it holds one message per report: its latest version. A tablet finds its own hexagon from its GPS position and subscribes to that hexagon and the ones around it (R6). It first receives the latest version of every report there, then each new version as it is published. After a drop, it continues from the last message it received.
+After each merge, the server finds the H3 hexagon of the report and publishes all of the report's events under a name that holds the hexagon and the report id: `report.<hexagon>.<reportId>`. NATS keeps only the newest message per name, so it holds one message per report: its latest version. A tablet finds its own hexagon from its GPS position and subscribes to that hexagon and the ones around it (R6). It also subscribes to the hexagon of every report it holds, with the ones around it, so it keeps receiving that report's updates after it moves away. It first receives the latest version of every report there, then each new version as it is published. After a drop, it continues from the last message it received.
 
 One open connection uses less battery than polling. It still uses some, because both sides send small messages to check that the connection is alive.
 
-The decision has two costs. First, when a report moves to another hexagon, the server also has to tell the old hexagon that the report left. Otherwise tablets there keep an old copy. Second, the server sends a full report and not single events. The message has to hold enough for the tablet to merge it with its own unsent edits and still find conflicts (Section 3.3).
+The decision has two costs. First, when a report moves to another hexagon, the server also has to tell the old hexagon that the report left. Otherwise tablets there keep an old copy. Second, the server sends every event of the report each time, not only the new one. The message has to hold enough for the tablet to merge it with its own unsent edits and still find conflicts (Section 3.3).
 
 ## References
 

@@ -3,6 +3,7 @@ package com.wildfiresync.device
 import android.util.Log
 import com.wildfiresync.core.Zone
 import com.wildfiresync.core.schema.Event
+import com.wildfiresync.core.schema.FieldValues.Location
 import io.nats.client.Connection
 import io.nats.client.Message
 import io.nats.client.Nats
@@ -25,8 +26,9 @@ private const val TAG = "ServerSync"
  *
  * in: the server publishes each report it has merged to the subject of its zone, as the whole event
  * list of that record rather than a merged row, so this tablet merges it with its own events and the
- * two end up agreeing. the tablet subscribes to the zones of the reports it holds, and the ring around
- * each one, so a report just over a boundary still arrives.
+ * two end up agreeing. the tablet subscribes to the zone it stands in and the zones of the reports it
+ * holds, each with the ring around it, so a report just over a boundary still arrives and one it holds
+ * keeps arriving after the tablet has moved away.
  *
  * everything but the broker calls runs in the scope, which for the app is the main thread, so the
  * fields below are only ever touched from there.
@@ -35,6 +37,7 @@ class ServerSync(
     private val store: TabletStore,
     private val scope: CoroutineScope,
     private val open: (String) -> Connection = { url -> Nats.connect(url) },
+    private val position: () -> Location = DevicePosition::current,
 ) {
 
     /** what the Server tab shows */
@@ -43,6 +46,7 @@ class ServerSync(
         val connected: Boolean = false,
         val sent: Int = 0,
         val received: Int = 0,
+        val position: Location? = null,
         val zones: Set<String> = emptySet(),
         val error: String? = null,
     )
@@ -123,13 +127,12 @@ class ServerSync(
         }
     }
 
-    /** points the subscription at the zones of the reports this tablet holds, when they have changed */
+    /** points the subscription at the zones around this tablet and the reports it holds, when they have changed */
     private suspend fun resubscribe() {
         val subscribing = connection ?: return
-        val zones = store.read { reports() }
-            .mapNotNull { it.location }
-            .flatMapTo(mutableSetOf()) { Zone.around(it) }
-        if (zones == _status.value.zones && (consumer != null || zones.isEmpty())) return
+        val here = position()
+        val zones = zonesFor(here, store.read { reports() }.mapNotNull { it.location })
+        if (zones == _status.value.zones && consumer != null) return
 
         val stopping = consumer
         consumer = null
@@ -138,7 +141,7 @@ class ServerSync(
                 stopping?.stop()
                 ReportConsumer(subscribing, zones) { message -> onReport(message) }.also { it.start() }
             }
-            _status.update { it.copy(zones = zones, error = null) }
+            _status.update { it.copy(position = here, zones = zones, error = null) }
         }
         catch (e: Exception) {
             // the stream is made by the server, so this is what a tablet sees when the server is not up yet
@@ -167,3 +170,6 @@ class ServerSync(
     }
 
 }
+
+internal fun zonesFor(position: Location, reports: List<Location>): Set<String> =
+    (listOf(position) + reports).flatMapTo(mutableSetOf()) { Zone.around(it) }

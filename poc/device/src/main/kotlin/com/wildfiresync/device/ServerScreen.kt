@@ -60,14 +60,8 @@ fun ServerScreen(viewModel: ServerViewModel = viewModel()) {
         if (status.connected) {
             // once connected, a change made here goes out by itself, so these keep climbing on their own
             Text("Sent ${status.sent} event(s), received ${status.received}")
-            if (status.zones.isEmpty()) {
-                Text(
-                    "No report has a settled location yet, so there is no zone to subscribe to. "
-                        + "Set a location on the Reports tab to start receiving reports from other crews.",
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
-            else {
+            status.position?.let { Text("Position: ${it.latitude()}, ${it.longitude()}") }
+            if (status.zones.isNotEmpty()) {
                 Text("Listening to ${status.zones.size} zone(s): " + status.zones.sorted().joinToString(", "),
                     style = MaterialTheme.typography.bodySmall)
             }
