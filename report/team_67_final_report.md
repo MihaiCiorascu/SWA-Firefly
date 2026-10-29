@@ -45,6 +45,7 @@ Radu Zidaru
   - [4.1 ADR 1: How Events Travel from Device to Server](#41-adr-1-how-events-travel-from-device-to-server)
   - [4.2 ADR 2: How Reports Travel from Server to Device](#42-adr-2-how-reports-travel-from-server-to-device)
   - [4.3 ADR 3: How Events are Authenticated](#43-adr-3-how-events-are-authenticated)
+  - [4.4 ADR 4: How a Conflict Is Resolved](#44-adr-4-how-a-conflict-is-resolved)
 - [5. Architectural Experiments](#5-architectural-experiments)
   - [5.1 Experiment 1: How far does the P2P link reach?](#51-experiment-1-how-far-does-the-p2p-link-reach)
   - [5.2 Experiment 2: How long does a sync take?](#52-experiment-2-how-long-does-a-sync-take)
@@ -231,9 +232,9 @@ Field Reporting carries our hardest problem: correctly merging concurrent offlin
 
 **Ubiquitous language.** We built our own team terminology for the domain concepts [<a href="#7">7</a>]. An **Incident** is one wildfire response effort. A **Report** is one reportable thing inside an incident. An **Event** is one immutable write to one field, by one device. A **dot** pairs a device id with that device's own local sequence number, and the **causal context** stores what a device already has seen, as a map from device id to counter, together they form the Dotted Version Vector (DVV) our merge relies on. A **Tier A field** merges by itself, automatic, no person needed. A **Tier B field** has no safe automatic merge and stays for a crew leader to resolve. A **conflict** happens when two events touch the same Tier B field and neither device knew about the other.
 
-**Tactical DDD.** The entity **Incident** has an immutable `incidentId`. Its `name` is Tier A with a fixed tiebreak rule. Its `status` is Tier B, since a status change is a judgement call, not something automatic. The entity **Report** has immutable `reportId` and `incidentId`. Its `reportType` is Tier A, merged by set union. Its `severity` is Tier A too, merged by taking the maximum. Its `location` and `description` stay Tier B for manual resolution. **Event** is its own category, with `eventId`, `operation` (`CREATE`, `SET_FIELD`, or `RESOLVE_CONFLICT`), `field`, `value`, `dot`, `causalContext`, and an informational `supersedes` field. **Dot** and **causalContext** are value objects, together the DVV. **MergeService** applies the Tier A/B policy. In the code this is the `MergeCore` class of the shared `core` library, which the tablet and the server both run. Every Tier A policy is deterministic, commutative, associative, and idempotent, the CRDT convergence properties, so every device converges regardless of arrival order. On the tablet, the Report, Incident and Event repositories are SQLite repositories over the shared schema (`ReportRepository`, `IncidentRepository`, `EventRepository`). We use no Factory, an Incident or Report is simply created by its first `CREATE` event.
+**Tactical DDD.** The entity **Incident** has an immutable `incidentId`. Its `name` is Tier A with a fixed tiebreak rule. Its `status` is Tier B, since a status change is a judgement call, not something automatic. The entity **Report** has immutable `reportId` and `incidentId`. Its `reportType` is Tier A, merged by set union. Its `severity` is Tier A too, merged by taking the maximum. Its `location` and `description` stay Tier B for manual resolution. **Event** is its own category, with `eventId`, `operation` (`CREATE`, `SET_FIELD`, or `RESOLVE_CONFLICT`), `field`, `value`, `dot`, `causalContext`, and `supersedes`. On a resolution, `supersedes` lists the values the crew leader saw when settling the conflict. It is only a record, and the merge does not use it (ADR 4). **Dot** and **causalContext** are value objects, together the DVV. **MergeService** applies the Tier A/B policy. In the code this is the `MergeCore` class of the shared `core` library, which the tablet and the server both run. Every Tier A policy is deterministic, commutative, associative, and idempotent, the CRDT convergence properties, so every device converges regardless of arrival order. On the tablet, the Report, Incident and Event repositories are SQLite repositories over the shared schema (`ReportRepository`, `IncidentRepository`, `EventRepository`). We use no Factory, an Incident or Report is simply created by its first `CREATE` event.
 
-Concurrent resolutions of the same Tier B conflict become a new conflict under the same mechanism, no special case needed.
+**Resolving a conflict.** A resolution is saved like any other change, with its own dot and causal context. The only difference is that it is allowed on Tier B fields only. Its causal context says which values the device had when the crew leader settled the conflict. Those values are no longer shown, but they stay in the event log, and the resolution becomes the new value. A value the device did not have is still shown. So in three cases a conflict is still shown after a resolution. First, two people settle the same conflict without knowing about each other: neither resolution knows about the other, so the two resolutions become a new conflict. Second, a device settles a conflict before it has received all the conflicting values: the resolution is in conflict with the values it missed. Third, a value written offline before the resolution arrives later: it opens the conflict again. In all three cases nothing is lost, and every device shows the same conflict. ADR 4 explains why we chose this.
 
 <figure>
   <img title="" src="../report/figures/field-reporting-classes.png" alt="field reporting class diagram">
@@ -338,7 +339,7 @@ Our bounded contexts match the stakeholders from Section 2.3. Field Reporting se
 
 ## 4. Architectural Decision Records
 
-This chapter summarises three decisions: how events get from a tablet to the server, how reports get back, and how these events are authenticated. Each is recorded in full as its own ADR, linked below.
+This chapter summarises four decisions: how events get from a tablet to the server, how reports get back, how these events are authenticated, and how a conflict is resolved. Each is recorded in full as its own ADR, linked below.
 
 ### 4.1 ADR 1: How Events Travel from Device to Server
 
@@ -351,6 +352,10 @@ Delivering new reports back to a tablet has to arrive quickly, without draining 
 ### 4.3 ADR 3: How Events Are Authenticated
 
 Firefly has to rule out false or spoofed reports without slowing a crew leader down in the field, and whatever proves a report's origin has to work fully offline, for both the server path and peer-to-peer sync. We weighed an IP/MAC whitelist with a shared secret, a per-device symmetric key with an HMAC per event, mutual TLS on the server connection, and signing each event with a device key pair. We chose per-event signing: it is the only option that covers both sync paths with one mechanism, and removing a lost or compromised device just means removing its public key, with nothing to change on any other tablet. Full ADR: [How Events Are Authenticated](adrs/adr3.md).
+
+### 4.4 ADR 4: How a Conflict Is Resolved
+
+When a Tier B field is in conflict, a crew leader settles it on one device, and every other device must accept that choice too, without hiding a value nobody has seen. The hard case is two people settling the same conflict at the same time without knowing about each other. We compared four options: the resolution lists what it replaces, the latest resolution wins, the higher role wins, or the resolution is a normal change. We chose the normal change: it replaces only the values its device had, so nothing unseen is hidden, and if two people settle a conflict without knowing about each other, both answers are shown as a new conflict. Full ADR: [How a Conflict Is Resolved](adrs/adr4.md).
 
 ## 5. Architectural Experiments
 

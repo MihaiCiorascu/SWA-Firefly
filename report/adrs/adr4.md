@@ -1,0 +1,21 @@
+### 4.4 ADR 4: How a Conflict Is Resolved
+
+**Context.** A Tier B field, such as a report's location or description, can get two different values from two devices that did not know about each other (Section 3.3). The merge does not choose between them. It shows both, and a crew leader settles the conflict by keeping one value or, for text, by writing new wording. This choice is sent to the other devices like any other change, and it has to settle the conflict on every device, in whatever order the events arrive. Two situations make this hard. First, two people can settle the same conflict at the same time, each on their own device, without knowing about each other. Second, a value written offline before the conflict was settled can arrive after it. The rule we choose has to meet three conditions. It must never hide a value that nobody has seen (R4). It must show a disagreement between two resolutions instead of hiding it. And every device must end with the same result (R3).
+
+**Options.** We compared four rules for deciding which values a resolution replaces.
+
+**The resolution lists what it replaces.** The resolution carries a list, called `supersedes`, of the values that were on the crew leader's screen ("supersede" means "replace"). The merge stops showing every value on the list. The rule is easy to follow, because each resolution names exactly what it replaces. However, nothing checks the list against what the device really received. A device could list a value it never had, for example because of a bug, and that value would be hidden without anyone seeing it. This breaks the first condition. The merge would also need a separate rule for resolutions, next to the rule for every other change.
+
+**The latest resolution wins.** Each resolution carries the time it was made, and the most recent one replaces every value before it. The rule is simple and always gives one answer. However, it cannot show a disagreement. When two people settle the same conflict differently, one answer replaces the other and nobody is told. A value written offline before the resolution is also hidden when it arrives. This breaks the first two conditions.
+
+**The higher role wins.** A resolution by a division leader replaces one by a crew member. This follows the chain of command at a fire. However, the lower-ranked answer is replaced without anyone being told, which breaks the second condition. Two people with the same role would also still need another rule.
+
+**The resolution is a normal change.** The resolution is saved like any other change, with its own dot and causal context. Its causal context records which values the device had when the crew leader settled the conflict. Exactly those values are no longer shown, but they stay in the event log (Section 3.3). A value the device did not have is still shown. When two people settle the same conflict without knowing about each other, neither resolution knows about the other, so both are shown as a new conflict. The merge needs no separate rule for resolutions.
+
+**Decision.** We chose to treat the resolution as a normal change, because it is the only option that meets all three conditions. A resolution only replaces values its device had, so no unseen value is hidden. Two resolutions made without knowing about each other are shown as a new conflict, so the disagreement stays visible. And the rule uses the same causal context as every other change, so every device ends with the same result, whatever order the events arrive in.
+
+**Consequences.** When two people settle the same conflict at the same time, the result is a new conflict, and one of them has to settle it again. A value written offline before a resolution opens the conflict again when it arrives. Every device shows these conflicts in the same way.
+
+Before a device saves a resolution, it checks that the conflict still has the same values that were on the screen. A new value can arrive while the crew leader is deciding, for example over P2P. In that case the device does not save the resolution. It shows a message that the conflict has changed, together with the new value, and the crew leader decides again. Without this check, the resolution would hide the new value without anyone seeing it.
+
+Resolutions keep the `supersedes` list only as a record of what the crew leader saw. The merge does not use it.
