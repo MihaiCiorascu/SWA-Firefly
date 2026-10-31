@@ -46,10 +46,17 @@ Radu Zidaru
   - [4.2 ADR 2: How Reports Travel from Server to Device](#42-adr-2-how-reports-travel-from-server-to-device)
   - [4.3 ADR 3: How Events are Authenticated](#43-adr-3-how-events-are-authenticated)
   - [4.4 ADR 4: How a Conflict Is Resolved](#44-adr-4-how-a-conflict-is-resolved)
-- [5. Architectural Experiments](#5-architectural-experiments)
-  - [5.1 Experiment 1: How far does the P2P link reach?](#51-experiment-1-how-far-does-the-p2p-link-reach)
-  - [5.2 Experiment 2: How long does a sync take?](#52-experiment-2-how-long-does-a-sync-take)
-  - [5.3 Limits and next steps](#53-limits-and-next-steps)
+- [5. Proof of Concept](#5-proof-of-concept)
+  - [5.1 What It Has to Show](#51-what-it-has-to-show)
+  - [5.2 What We Built](#52-what-we-built)
+  - [5.3 How an Edit Travels](#53-how-an-edit-travels)
+  - [5.4 How We Checked It](#54-how-we-checked-it)
+  - [5.5 Where It Differs from the Architecture](#55-where-it-differs-from-the-architecture)
+  - [5.6 What Building It Taught Us](#56-what-building-it-taught-us)
+- [6. Architectural Experiments](#6-architectural-experiments)
+  - [6.1 Experiment 1: How far does the P2P link reach?](#61-experiment-1-how-far-does-the-p2p-link-reach)
+  - [6.2 Experiment 2: How long does a sync take?](#62-experiment-2-how-long-does-a-sync-take)
+  - [6.3 Limits and next steps](#63-limits-and-next-steps)
 - [References](#references)
 
 ## 1. Introduction
@@ -58,7 +65,7 @@ Climate change has made major natural disasters common. First responders often w
 
 We propose Firefly, an app that lets emergency personnel record and edit incident reports from the field. The system works offline: personnel can create and edit reports with no connection, and a backend merges conflicting edits once connectivity returns. Since more than one person can edit the same report while offline, we designed a conflict-resolution policy that avoids losing safety-critical information. We also added peer-to-peer sync between devices that are near each other, so personnel get the most complete picture even with low connectivity.
 
-Chapter 3 covers the architecture. Chapter 4 records three architectural decisions. Chapter 5 describes two experiments. Section 2.8 covers the roadmap.
+Chapter 3 covers the architecture. Chapter 4 records three architectural decisions. Chapter 5 describes the proof of concept, and Chapter 6 two experiments run on it. Section 2.8 covers the roadmap.
 
 ## 2. Problem and Context Analysis
 
@@ -157,7 +164,7 @@ These attributes fight each other sometimes. Compatibility across versions holds
 
 To make the future concrete, we laid it out as a roadmap of four phases over a horizon of one to two years. The roadmap carries no dates, since development time is impossible to estimate without knowing team size, so it names what each phase delivers rather than when it ships.
 
-The **proof of concept** is the phase we build during this course. It is deliberately narrow: the offline map, syncing with the central server, and P2P mode between two tablets. It is not deployed to anyone, its purpose is to show that a tablet stays useful with no connection and that two tablets can reconcile what they did apart.
+The **proof of concept** is the phase we build during this course (Chapter 5). It is deliberately narrow: the offline map, syncing with the central server, and P2P mode between two tablets. It is not deployed to anyone, its purpose is to show that a tablet stays useful with no connection and that two tablets can reconcile what they did apart.
 
 The **minimum viable product** puts the system in the hands of one fire service, on real incidents alongside the radio. It adds the first working interface: a map for logging and reading reports, and zones, so a crew receives what belongs to the ground it works on. A decision point sits before this phase, shown in Figure 4: field trials have to show a crew leader can log a report quickly with gloves on and a fire in front of them, otherwise the interface gets reworked first.
 
@@ -357,11 +364,76 @@ Firefly has to rule out false or spoofed reports without slowing a crew leader d
 
 When a Tier B field is in conflict, a crew leader settles it on one device, and every other device must accept that choice too, without hiding a value nobody has seen. The hard case is two people settling the same conflict at the same time without knowing about each other. We compared four options: the resolution lists what it replaces, the latest resolution wins, the higher role wins, or the resolution is a normal change. We chose the normal change: it replaces only the values its device had, so nothing unseen is hidden, and if two people settle a conflict without knowing about each other, both answers are shown as a new conflict. Full ADR: [How a Conflict Is Resolved](adrs/adr4.md).
 
-## 5. Architectural Experiments
+## 5. Proof of Concept
+
+The proof of concept is the first phase of the roadmap (Section 2.8). We built the riskiest part first: the Wardley Map (Section 2.4) puts Field Reporting, the merge of concurrent offline edits, alone in genesis, and no existing tool does it for us (Section 2.2). Around the merge we built the two paths that carry it, the server path through NATS and P2P mode. The code, and how to run it, is in `poc/`.
+
+### 5.1 What It Has to Show
+
+1. **A tablet stays useful with no connection** (R1, availability under partition).
+2. **No edit is lost, and every replica ends up with the same record** (R3, R4, reliability). Table 5.1 breaks this into seven properties.
+3. **The server is one more peer** (R2, R3). It runs the same merge code on the same events, and a tablet merges what the server sends like what another tablet sends.
+
+Scalability is measured in the beta (Section 2.7), and compatibility across versions needs a second version, so both are left out.
+
+### 5.2 What We Built
+
+We built three containers of Section 3.4: the tablet app (`device`), the ICP server with its store (`server`), and the merge library both run (`core`). Docker Compose runs NATS JetStream and PostgreSQL next to the server.
+
+Both stores have the same tables and constraints, once as SQLite STRICT tables and once for PostgreSQL. `events` is the only source of truth, every other table is rebuilt from it.
+
+### 5.3 How an Edit Travels
+
+**Logging without a connection.** A screen calls `ReportService`, the only way to change a record. It stamps the change with a random `eventId`, the tablet's next dot and its causal context. In one SQLite transaction it stores the event, advances the replica state and rebuilds the record's row from all of its events, so a crash leaves all of it or none of it. A field that is unknown or in conflict stays empty in the row, and its candidates go in `field_conflicts`. No step on this path makes a network call.
+
+**Two crews meeting.** Both crew leaders tap Start P2P, and each tablet advertises and searches at once over Nearby Connections, so neither side is the host. Each sends its causal context, and the other answers with every event that context does not cover. That includes events it got from other tablets, so a report reaches a crew that never met its author. The receiver stores an event only if its `eventId` and dot are new, and rebuilds the records it touched. A Tier B conflict shows each value with who wrote it and when. The crew leader settles it with Keep this or an agreed wording, a `RESOLVE_CONFLICT` that covers the values on screen. If another value arrived meanwhile, the tablet refuses, since it would settle a value nobody looked at.
+
+**Back into coverage.** After Connect on the Server tab, the tablet publishes every event it holds, then each new one, including those from other tablets, so a tablet with signal relays for one without. Each goes on `events.operation.<record type>.<record id>` with its dot as message id. The server reads them through a durable consumer, so nothing is lost while it is down. In one PostgreSQL transaction it inserts the event if it is new, replays the record's events through `core` and rewrites the row by the tablet's rule. It then publishes the report on `report.<zone>.<reportId>`, in a stream that keeps the latest message per subject, so a tablet joining a zone gets every report in it.
+
+The server publishes a report as all of its events rather than its merged row, because a merged row cannot be merged again: a tablet that knows something the server does not would have to pick one version. Events merge with whatever the tablet holds, through the same path as P2P.
+
+### 5.4 How We Checked It
+
+Claim 1 holds by construction (Section 5.3). For claims 2 and 3 there are 151 automated tests, 84 in `core`, 50 in `device` and 17 in `server`. The central one, `MergeLawsTests`, generates 300 random histories. In each, four simulated tablets with clocks three hours apart make 40 edits to three records and now and then receive each other's logs. `TierATests` and `TierBTests` pin each field's policy, and `EdgeCaseTests` covers unusual cases such as a write that arrives before its create. Two of the edge cases are disabled on purpose and mark known gaps, for example the same description typed on two tablets still shows as a conflict. The tablet's database tests run on Robolectric, and `MergeServiceTests` runs the server against the real schema in a throwaway PostgreSQL through Testcontainers. Table 5.1 maps them to claim 2.
+
+| Property | Evidence |
+|---|---|
+| No silent loss | Events are never changed, an event and its row are written together, and a Tier B field keeps every concurrent value (`TierBTests`). |
+| Convergence | All four simulated tablets end with the same record, equal to a rebuild from their logs. The server runs the same `core` (`MergeServiceTests`). |
+| Duplicate safety | A doubled log changes nothing. Both stores keep one copy of an event sent twice. |
+| Order independence | Ten shuffles of each history give the same record. Merging is commutative, associative and idempotent. |
+| Path independence | Histories mix direct and relayed delivery, and tablets pass on everything they hold. |
+| Clock independence | The simulated clocks are hours apart. System time is only displayed. |
+| Conflict visibility | A Tier B conflict stays until one resolution covers every value, and concurrent resolutions form a new conflict (`TierBTests`). |
+
+*Table 5.1: The seven properties behind claim 2. Rows without a test name come from `MergeLawsTests`.*
+
+On devices, a Galaxy S25 Ultra and a Galaxy Tab S8+ sent each other severity changes over P2P, and so did two emulators. A Galaxy S24 and the S25 Ultra ran both experiments of Chapter 6, and in Experiment 2 every log arrived with nothing lost and no duplicates.
+
+### 5.5 Where It Differs from the Architecture
+
+The shortcuts sit around the merge, not in it. The MVP has to close them.
+
+- **Zones.** A zone is a 0.05° grid cell, about 5.5 km north to south, not an H3 hexagon [<a href="#19">19</a>]. `Zone` is one class, so swapping it is local. A tablet's position is a fixed point in the code, not a GPS reading, so every tablet listens around the same spot plus around the reports it holds (Section 3.7). The larger radius for division leaders and zones assigned by command (R6) are not built. Incidents have no location and so no zone, so they travel only over P2P.
+- **Server sync.** The crew leader taps Connect instead of the tablet noticing coverage (R2). The tablet keeps no sent mark (Section 3.7) and sends everything again on each connect.
+- **Trust.** A tablet makes its own id, events are not signed (ADR 3), and P2P accepts any tablet that has P2P on. R5 asks that tablets trust each other on request, for example by both crew leaders confirming the short code Nearby Connections shows on each side. This is acceptable only because the proof of concept is never deployed.
+- **Missing parts.** There is no command web client. Every change replays the record's whole history, which is simple but grows with the record.
+
+### 5.6 What Building It Taught Us
+
+**Sharing `core` is what makes the server a peer.** The server has no merge logic of its own, so it cannot disagree with a tablet, and a merge bug fixed once is fixed on both sides.
+
+**Idempotence belongs in the stores, not the broker.** Our first design counted on JetStream ignoring a message id it has already seen. It does so only within its duplicate window, two minutes by default [<a href="#24">24</a>], so a resend after a longer gap is stored twice in the stream. The record stays right because both stores keep an event once, by its `eventId` and dot. The broker's check saves work, it does not make the result correct.
+
+**Tier B reaches beyond the merge.** A disputed location gives a report no zone, so the server publishes it nowhere until a crew leader settles it, and a tablet that did not already hold it cannot get it from the server. The MVP has to decide where such a report shows up, for example in the zone of every candidate.
+
+**Severity can only rise.** The maximum converges without anyone deciding, but a crew leader who typed 9 instead of 4 cannot take it back (`TierATests`). Field trials should show whether that is acceptable.
+
+## 6. Architectural Experiments
 
 Two of our decisions are based on what we expect, not on data. So we test each one with an experiment. The results will confirm a decision or change it. For Heron both experiments are designed and each has a first result. Appendix B has the details.
 
-### 5.1 Experiment 1: How far does the P2P link reach?
+### 6.1 Experiment 1: How far does the P2P link reach?
 
 We use Nearby Connections for P2P between tablets [<a href="#18">18</a>]. We chose it from the documentation, not from data. This matters for R5, where two crews meet and sync. The question is how far apart two devices can be and still receive each other's changes.
 
@@ -369,7 +441,7 @@ We did a walking test with a Galaxy S25 Ultra and a Galaxy S24 in clear line of 
 
 We keep Nearby Connections if the changes arrive at 10m, because crews meet face to face. If not, we test Wi-Fi Direct. The whole logs we sent in Experiment 2 also arrived complete at ~10m and ~20m, in clear line of sight at the same place as the walking test.
 
-### 5.2 Experiment 2: How long does a sync take?
+### 6.2 Experiment 2: How long does a sync take?
 
 Section 3.3 explains the causal context. In the sync in Section 3.7 a tablet sends only the events the other tablet does not have. We call this the causal-context way. The simple way is to send the whole log. The causal-context way sends less, but it needs one more message and more code. The question is whether it is worth it. This matters for R3 and for the scalability target in Section 2.7.
 
@@ -377,7 +449,7 @@ We send a whole log of 10,000 events from a Galaxy S24 to a Galaxy S25 Ultra ove
 
 We keep the causal-context way if sending the whole log takes more than one minute. It took ~1 s, so on this link the simple way is enough. We still have to test a weak link at the edge of the range.
 
-### 5.3 Limits and next steps
+### 6.3 Limits and next steps
 
 We used only Samsung devices. The walk was in clear line of sight, which is the best case on a fireground. A good result does not prove a decision is right. It only shows it is not wrong. The timing comes from one pair of devices. More measurements come before the Swan release.
 
@@ -428,3 +500,5 @@ We used only Samsung devices. The walk was in clear line of sight, which is the 
 <a id="22">[22]</a> Meshtastic, "ATAK Plugin," Meshtastic.org. https://meshtastic.org/docs/software/integrations/integrations-atak-plugin/ (accessed Oct. 23, 2026)
 
 <a id="23">[23]</a> S. W. Miller, "This small mesh networking device from goTenna could unblock signal-denied warfare environments," Armada International, Sep. 9, 2019. https://www.armadainternational.com/2019/09/this-small-mesh-networking-device-from-gotenna-could-unblock-signal-denied-warfare-environments/ (accessed Oct. 23, 2026)
+
+<a id="24">[24]</a> NATS, "Your first stream," Docs.nats.io. https://docs.nats.io/nats-concepts/jetstream/streams (accessed Oct. 26, 2026)
