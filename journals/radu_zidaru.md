@@ -93,3 +93,49 @@ For my individual work, I worked on the merge-core branch. A teammate had rewrit
 * Individual work on updating and fixing the merge-core branch: 6h
 
 **Total: 7.5h**
+
+## Week 7 (12 - 18 October 2026)
+
+On Saturday, 17 October, we had a two-hour team meeting to plan the work after the Heron release. We agreed on the next steps: a resilience experiment, applying the peer review feedback to the report, implementing the dotted version vectors in the merge logic, the communication between the server and the tablets, adapting the tablet app to the new merge library, the edge cases of the merge logic, and the final presentation. We also decided to leave security for later.
+
+For my individual work, I peer reviewed the reports of two other teams, which took about five hours per team.
+
+### Time spent
+
+* Team meeting about the next steps (17 October): 2h
+* Peer review of the first team: 5h
+* Peer review of the second team: 5h
+
+**Total: 12h**
+
+## Week 8 (19 - 25 October 2026)
+
+On Friday, 23 October, we had a 30-minute in-person meeting with our TA. She asked us to focus on the functionality of the proof of concept rather than its user interface, and we discussed the demo.
+
+For my individual work, I implemented the dotted version vectors in the merge library. Until then, the merge kept every value ever written to a field and treated them all as competing, even when one device had already seen the other device's value. Now each stored value keeps the causal context of the event that wrote it, and a value is dropped when another write to the same field had already seen it. This also made it possible to resolve conflicts: a resolution is an ordinary write that has seen the conflicting values, so it replaces them, while two resolutions made offline at the same time become a new conflict.
+
+After that, I made the changes for the link between the tablets and the server. The server now merges the incoming events with the shared merge library, stores them, and publishes each merged report to the subject of its zone. The tablet keeps a live connection to the server: it sends every event it holds, including the ones it received from other tablets, and subscribes to the zones of the reports it holds, so it receives the latest version of each.
+
+### Time spent
+
+* TA meeting (23 October): 0.5h
+* Implementing the dotted version vectors in the merge library: 5h
+* Changes for the link between the tablets and the server: 8h
+
+**Total: 13.5h**
+
+## Week 9 (26 October - 1 November 2026)
+
+On Wednesday, 28 October, the whole team met for two hours to rehearse the final presentation. On Thursday, 29 October, we had the presentation day, where we gave feedback to other teams and presented our project.
+
+For my individual work, I wrote the proof of concept section of the report, rehearsed my part of the presentation, and put together the demo video of the proof of concept.
+
+### Time spent
+
+* Team presentation rehearsal (28 October): 2h
+* Presentation day (29 October): 3.5h
+* Writing the proof of concept section of the report: 4h
+* Rehearsing my part of the presentation: 2h
+* Putting together the proof of concept demo video: 6h
+
+**Total: 17.5h**
