@@ -99,3 +99,55 @@ hours:
 - syncing the architecture chapter with the implementation, title, table of contents, web client, wording (sun 11 oct): 3.5h
 
 total: 20h
+
+## W7 (12 - 18 oct)
+
+On Monday and Tuesday I reworked the CA1 part of the report after review: I trimmed the deployment view, reworded the contrasts in the function sections and reworked the container, component, code and runtime views. On Wednesday I worked on the merge core: RESOLVE_CONFLICT now settles the candidates it supersedes, locations off the map are rejected and a value can replace the values its writer had seen.
+
+From Thursday to Sunday I worked on the tablet app. Reports, incidents and conflicts are now built from the merge core, and the screens and P2P share one store, so two tablets sync and merge over P2P. I added an incidents tab, editors for every report field and settling conflicts, where only the values the crew leader was shown get settled. The tablet now sends its real events to the server, and the report form and tabs fit on a phone screen. I also updated the docs for the tablet app.
+
+On Saturday we had a team meeting to plan the next steps (resilience experiment, report feedback, DVVs, the server-tablet link, merge edge cases and the final presentation).
+
+hours:
+
+- reworking the container, component, code, runtime and deployment views after review (mon 12 - tue 13 oct): 4h
+- merge core: RESOLVE_CONFLICT, off-map locations, replacing seen values (wed 14 oct): 5h
+- tablet app on the merge core, shared store, p2p sync and merge (thu 15 - fri 16 oct): 7h
+- incidents tab, report field editors, settling conflicts, sending real events to the server, phone layout (fri 16 - sun 18 oct): 6h
+- docs for the tablet app (sun 18 oct): 1h
+- team meeting (sat 17 oct): 2h
+
+total: 25h
+
+## W8 (19 - 25 oct)
+
+On Monday Radu's DVVs were ready. I merged them into my branches and dropped the parts of my work that the DVVs now cover: my causal-context replacement and my supersedes based RESOLVE_CONFLICT. I also turned on the test that a resolution cannot settle a value it never received, and lined up my merge core and tablet branches so they could all go into master.
+
+I also did the peer reviews of team 21 and team 23. I read their reports and PoCs and submitted the answers.
+
+On Friday we had a 30 min meeting with our TA. We should add a PoC section, write each experiment up in four parts (introduction, why, the experiment, discussion) and keep the report under 9000 words. For the final presentation we can follow the structure of the report and talk over a recording of the demo. After that I started working on the final presentation. I got feedback on the first draft of the slides and worked it in.
+
+hours:
+
+- integrating the DVVs, removing my overlapping code, enabling the test, merging the branches (mon 19 oct): 2.5h
+- peer reviews of team 21 and team 23: 6h
+- TA meeting (fri 23 oct): 0.5h
+- starting on the final presentation: 2h
+- feedback on the first draft of the slides and working it in: 2h
+
+total: 13h
+
+## W9 (26 oct - 1 nov)
+
+From Monday to Wednesday I worked on the second draft of the final presentation. As the TA suggested, it follows the structure of the report: existing tools, system context, stakeholders, scenarios and conflicts, then the architecturally significant requirements, the container view, the merge tiers, the synchronization steps (back into coverage, zones) and the three main decisions (tablet to server, server to tablet, authentication), and finally the experiments and the PoC. After another round of feedback on the slides I worked that in as well.
+
+On Wednesday we rehearsed the presentation with the whole team, and on Thursday we gave the final presentation and demo. I also proofread the report.
+
+hours:
+
+- second draft of the final presentation, another round of feedback (mon 26 - wed 28 oct): 7h
+- proofreading the report: 1h
+- rehearsal with the team (wed 28 oct): 2h
+- presentation day (thu 29 oct): 4h
+
+total: 14h
