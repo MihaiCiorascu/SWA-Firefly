@@ -190,6 +190,7 @@ What happened this week:
 
 * Tuesday 27 oct: Met with Alex to do the demo. P2P failed on Android 17 with the error "8: INTERNAL_ERROR". I added the local network permission to the manifest and ask for it in the app. The edge case tests and this fix were merged the same day.
 * Wednesday 28 oct: I rehearsed the presentation and checked the screen texts and the server log lines against the code. I prepared for the Q&A (Nearby Connections, the merge tiers, the experiments, pricing, security). Met with the entire team to rehearse the presentation (2h)
+* Thursday 29 oct: Feedback other teams and present our project (3.5h)
 * Sunday 1 nov: merging (2h)
 
 hours:
@@ -199,8 +200,9 @@ hours:
 * rehearsing my part at home, preparing the Q&A (Wed 28 - Sat 31): 4h
 * meeting with the whole team: 2h
 * merging: 2h
+* presentation day: 3.5h
 
 * coding: 10h (meeting with Alex 4h, Android 17 fix 4h, merging 2h)
 * writing: 0h
 
-total: 16h
+total: 19.5h
