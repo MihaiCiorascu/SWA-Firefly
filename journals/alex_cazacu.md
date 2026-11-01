@@ -80,3 +80,41 @@ This week I finished the security ADR. I created the presentation for the TA mee
 * Sync with teammate for him to integrate my merge library in codebase (1h)
 
 Total: 12h
+
+### Week 7
+
+This week I spent a lot of time doing the peer reviews. I attended a meeting with the team, where we discussed what else should we do for the rest of the project. I picked implementing security since I did a lot of research on it and wrote the ADR for it. However, as I was implementing it, I started to realise that it is a lot of work that provides little benefit to the goal of the PoC. I checked the example reports and I saw that none actually implement security. One of the peer reviews I performed implemented authentication, and I felt it was non-constructive to the goals of the PoC. I wrote up my concerns to the team and we voted to not implement it. I then spent quite a while reviewing some big MRs from the team, including creating a test that according to our spec should pass but it fails for the current implementation.
+
+* Peer review (8h)
+* Team meeting Saturday (2h)
+* Security research (4h)
+* Security implementation (5h)
+* Check example reports and decide against security (2h)
+* Big MRs on Monday reviewed (4h)
+
+Total: 25h
+
+### Week 8
+
+In week 8, I implemented CI for this project as we did not have it. I had some trouble with Docker, but I worked it out in the end. I applied some fixes to the report that a lot of people mentioned in the peer reviews. I worked on linking the whole project together. I did the work on the merge library while Radu did the rest. I spent some time reviewing Radu's work. We also met with the TA on Friday to discuss the final release.
+
+* CI implementation (4h)
+* Report fixes (1h)
+* Mergecore linking work, including research on grid zones (7h)
+* Reviewing Radu's work (2h)
+* TA meeting (0.5h)
+
+Total: 14.5h
+
+### Week 9
+
+In the last week I met with Mihai to do the demo. We had a problem where the app no longer worked because both of our phones updated to the newest Android the day before and P2P did not work. We managed to fix it by finding a new, missing permission, and then we spent time designing the scenarios and recording them on the different devices. Radu offered to edit the video. I then spent quite some time going through the report again and the whole codebase to prepare for the presentation. We met with the entire team to rehearse the presentation and I also prepared at home. On Thursday, we attended the presentation day and presented our project. Then, during the weekend I did some proofreading of the report again in preparation for the Swan release, including reviewing Radu's PoC section.
+
+* Fixing the demo bug (4h)
+* Creating the scenarios and recording videos (4h)
+* Reading report and codebase (3h)
+* Meeting with the team to rehearse the presentation (2h)
+* Rehearsing my part (2h)
+* Report proofreading and reviewing PoC section (3h)
+
+Total: 18h
