@@ -136,3 +136,18 @@ hours:
 - feedback on the first draft of the slides and working it in: 2h
 
 total: 13h
+
+## W9 (26 oct - 1 nov)
+
+From Monday to Wednesday I worked on the second draft of the final presentation. As the TA suggested, it follows the structure of the report: existing tools, system context, stakeholders, scenarios and conflicts, then the architecturally significant requirements, the container view, the merge tiers, the synchronization steps (back into coverage, zones) and the three main decisions (tablet to server, server to tablet, authentication), and finally the experiments and the PoC. After another round of feedback on the slides I worked that in as well.
+
+On Wednesday we rehearsed the presentation with the whole team, and on Thursday we gave the final presentation and demo. I also proofread the report.
+
+hours:
+
+- second draft of the final presentation, another round of feedback (mon 26 - wed 28 oct): 7h
+- proofreading the report: 1h
+- rehearsal with the team (wed 28 oct): 2h
+- presentation day (thu 29 oct): 4h
+
+total: 14h
