@@ -1,6 +1,6 @@
 <div align="center">
 
-### CS4505 Software Architecture Heron Report
+### CS4505 Software Architecture Swan Report
 # Firefly
 
 **Group 67**
@@ -13,7 +13,7 @@ Alexandru Cristian Cazacu
 
 Mihai Ciorascu
 
-Radu Zidaru
+Radu-Andrei Zidaru
 
 </div>
 
